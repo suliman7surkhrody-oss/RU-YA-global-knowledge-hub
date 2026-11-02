@@ -371,7 +371,11 @@ begin
  if new.score is not null and (new.score < 0 or new.score > (select a.max_score from public.assignments a where a.id=new.assignment_id)) then
    raise exception 'The grade must be between zero and the assignment maximum.';
  end if;
- if auth.uid() = old.student_id and (
+ if tg_op='INSERT' and auth.uid()=new.student_id and
+    (new.score is not null or new.feedback is not null or new.graded_by is not null or new.graded_at is not null) then
+   raise exception 'Only the assigned teaching team can grade submissions.';
+ end if;
+ if tg_op='UPDATE' and auth.uid() = old.student_id and (
    new.score is distinct from old.score or
    new.feedback is distinct from old.feedback or
    new.graded_by is distinct from old.graded_by or
@@ -382,7 +386,7 @@ begin
  return new;
 end $$;
 drop trigger if exists protect_submission_grade on public.submissions;
-create trigger protect_submission_grade before update on public.submissions
+create trigger protect_submission_grade before insert or update on public.submissions
 for each row execute procedure public.protect_submission_grade();
 
 -- Message recipients may mark a message read, but cannot rewrite its contents.
