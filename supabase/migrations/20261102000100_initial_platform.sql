@@ -235,7 +235,7 @@ alter table public.messages enable row level security;
 
 -- Restrictive policies ensure a suspended account cannot bypass the UI and
 -- continue using an existing access token against the database or file store.
-do $ declare t text; begin
+do $$ declare t text; begin
  foreach t in array array['profiles','academic_terms','courses','class_sections','enrollments','class_sessions','attendance','assignments','submissions','library_resources','announcements','messages'] loop
   execute format('drop policy if exists "active accounts only" on public.%I',t);
   execute format('create policy "active accounts only" on public.%I as restrictive for all to authenticated using(public.is_active_member()) with check(public.is_active_member())',t);
@@ -248,7 +248,7 @@ using(public.is_active_member()) with check(public.is_active_member());
 -- Profiles
 drop policy if exists "profiles read self staff" on public.profiles;
 create policy "profiles read self staff" on public.profiles for select to authenticated
-using(id=auth.uid() or public.is_management() or exists(select 1 from public.enrollments e join public.class_sections cs on cs.id=e.section_id where e.student_id=profiles.id and public.is_teacher() and public.is_teacher() and cs.teacher_id=auth.uid()));
+using(id=auth.uid() or public.is_management() or exists(select 1 from public.enrollments e join public.class_sections cs on cs.id=e.section_id where e.student_id=profiles.id and public.is_teacher() and cs.teacher_id=auth.uid()));
 drop policy if exists "profiles update self" on public.profiles;
 create policy "profiles update self" on public.profiles for update to authenticated
 using(id=auth.uid() or public.is_management())
