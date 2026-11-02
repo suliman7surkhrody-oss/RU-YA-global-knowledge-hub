@@ -111,6 +111,93 @@ body{background:#F8FCFF;color:#14243A}
 .closing-section{padding:70px 25px;background:linear-gradient(115deg,#073b5b,#087eaa 70%,#38bdf8);color:#fff;text-align:center}.closing-inner{max-width:760px;margin:auto}.closing-inner .eyebrow{color:#bceeff}.closing-inner h2{font-size:clamp(30px,4vw,44px);margin:15px 0;color:#fff}.closing-inner p{font-size:13px;line-height:1.8;color:#d7f0fb;max-width:600px;margin:0 auto}.closing-inner .hero-ctas{justify-content:center}.closing-inner .btn-light{background:#fff;color:#075477}.closing-inner .btn-outline{background:#ffffff12;border:1px solid #ffffff70;color:#fff}.footer{background:#082f49}
 @media(max-width:900px){.hero-inner{grid-template-columns:1fr .7fr;gap:15px}.hero-visual{transform:scale(.85)}.intro-grid{gap:35px}.pathway-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:650px){.topbar{height:70px}.nav{display:none}.hero{padding:52px 22px 0}.hero-inner{grid-template-columns:1fr;gap:0}.hero h1{font-size:43px}.hero-visual{height:260px;transform:scale(.8);margin-top:-5px}.hero-bottomline{font-size:7px;flex-wrap:wrap;justify-content:center;padding:15px 0}.intro-section{padding:58px 22px}.intro-grid{grid-template-columns:1fr;gap:12px}.purpose-grid{grid-template-columns:1fr}.purpose-card{padding:25px}.principle-grid{grid-template-columns:1fr}.pathway-grid{grid-template-columns:1fr}.pathway{min-height:0}.pathway p{min-height:0}.community-section{padding:45px 0}.library-feature{padding:22px;flex-wrap:wrap;gap:15px}.library-copy{flex-basis:calc(100% - 85px)}.library-feature>.btn{margin-left:81px}.closing-inner .hero-ctas{flex-direction:column;align-items:center}.closing-inner .btn{width:100%;max-width:280px}}
+
+/* RU'YA visual comfort refresh: warm neutrals, sage, muted teal and clay */
+:root{--forest:#29483f;--green:#668b78;--mint:#e3ece4;--lime:#c9d9c8;--ink:#293a35;--muted:#687871;--paper:#f2f0e9;--white:#fbfaf6;--line:#dedfd5;--gold:#b58b59;--shadow:0 14px 36px rgba(43,59,49,.08)}
+html{scroll-behavior:smooth}
+body{background:#f2f0e9;color:#293a35;font-size:14px}
+.topbar{background:#f8f6f0;border-color:#dedfd5}
+.mark{background:#496b5b;color:#f8f6f0}
+.brandname{font-size:14px}
+.nav{font-size:13px;color:#596a61}
+.nav a:hover{color:#a36f50}
+.btn{font-size:13px}
+.btn-green{background:#557a67;color:#fff}
+.btn-green:hover{background:#3e6351}
+.btn-outline{background:#f8f6f0;border-color:#d6d9ce;color:#405c4d}
+.hero{background:radial-gradient(circle at 83% 22%,rgba(205,177,139,.2),transparent 28%),linear-gradient(118deg,#263f38 0%,#456b5a 62%,#718d77 100%);padding-top:66px;padding-bottom:64px}
+.hero h1{font-size:clamp(34px,4.2vw,52px);line-height:1.12;max-width:640px}
+.hero h1 span{color:#d8c3a5}
+.hero p{font-size:14px;line-height:1.75;color:#e4e9df}
+.eyebrow{color:#d6c3a6}
+.hero-note{color:#d4dfd3}
+.visual{background:rgba(250,248,241,.12);border-color:rgba(250,248,241,.22)}
+.mini-card{background:#f8f6f0}
+.mini-stat{background:rgba(235,228,212,.13)}
+.section{padding-top:60px;padding-bottom:60px}
+h2{font-size:clamp(25px,2.5vw,32px);line-height:1.2}
+.section-head p{font-size:14px}
+.feature-grid,.portal-cards{gap:18px}
+.feature,.portal,.library-row{background:#faf9f4;border-color:#e0dfd5;box-shadow:0 7px 22px rgba(43,59,49,.035)}
+.feature-icon{background:#e6ece2;color:#557a67}
+.feature h3,.library-row h3{font-size:16px}
+.feature p,.portal p,.library-row p{font-size:13px;line-height:1.65}
+.portal-band{background:#e8e9df}
+.portal{border-color:#d9ddd1}
+.portal .tag,.section-head .eyebrow{color:#9a7051}
+.book-icon{background:#eee7d9;color:#96734b}
+.footer{background:#293f37;color:#e8e9df;font-size:12px}
+.footer small{color:#c3cfc1}
+.modal-wrap{background:rgba(31,48,40,.62)}
+.modal{background:#faf9f4}
+.modal h2{font-size:23px}
+.modal p,.hint{font-size:13px;line-height:1.6}
+.field label{font-size:12px}
+.field input,.field select{background:#f5f3ec;border-color:#dedfd5;font-size:14px}
+.field input:focus,.field select:focus{border-color:#77957c}
+.hint{background:#edf0e7}
+.dashboard{background:#f0efe8;color:#293a35}
+.dashbar{background:#f8f6f0;border-color:#dedfd5}
+.workspace-side{background:#f8f6f0;border-color:#dedfd5}
+.workspace-nav{color:#63736a;font-size:13px}
+.workspace-nav .nav-ico{background:#eceee6;color:#66816d}
+.workspace-nav.active{background:#e7ece2;color:#405f4b;box-shadow:inset 3px 0 #a77a58}
+.workspace-nav.active .nav-ico{background:#dce6d9;color:#496b55}
+.side-bottom{background:linear-gradient(145deg,#344f43,#66816b)}
+.secure-label,.workspace-topline .eyebrow,.card-heading span{color:#8b7051}
+.workspace-topline h1{font-size:clamp(25px,2.6vw,33px);color:#293f36}
+.welcome-sub{font-size:13px;color:#718078}
+.date-chip,.workspace-stat,.workspace-card{background:#faf9f4;border-color:#e0dfd5;box-shadow:0 6px 18px rgba(43,59,49,.035)}
+.date-chip>span,.workspace-stat .stat-icon{background:#e8ede4;color:#66816d}
+.date-chip small,.workspace-stat .stat-top{color:#839087}
+.date-chip b{font-size:11px;color:#465b4e}
+.portal-hero{background:linear-gradient(115deg,#2c493e,#557b65 68%,#829579);box-shadow:0 12px 28px rgba(54,80,61,.14)}
+.portal-hero h2{font-size:22px}
+.portal-hero p{font-size:13px;line-height:1.65}
+.workspace-stat strong{font-size:23px;color:#344f41}
+.workspace-stat small{font-size:11px;color:#78857b}
+.workspace-card{padding:20px}
+.card-heading h3{font-size:15px;color:#344c40}
+.activity-icon{background:#e9eee5;color:#68816b}
+.activity-copy b{font-size:12px;color:#40564a}
+.activity-copy small{font-size:10px;color:#849087}
+.activity-tag{background:#eee9df;color:#8d6c4d;font-size:9px}
+.progress-line{background:#e5e8de}
+.progress-line i{background:linear-gradient(90deg,#789779,#b18a64)}
+.progress-label{font-size:10px;color:#78857b}
+.quick-action{background:#f5f4ed;border-color:#e2e0d6;color:#4b6253;font-size:11px}
+.quick-action:hover{background:#e9eee5;border-color:#b8c8b5}
+.workspace-page-title{font-size:25px!important;color:#344f41}
+.workspace-page-intro{font-size:13px;color:#748178;line-height:1.7}
+.avatar{background:#e8ede4;color:#496b55}
+.toast{background:#344f43;font-size:13px}
+@media(max-width:700px){
+ .hero h1{font-size:clamp(32px,8vw,40px)}
+ .section{padding:48px 20px}
+ .workspace-topline h1{font-size:26px}
+ .portal-hero h2{font-size:20px}
+}
+
 </style>
 </head>
 <body>
