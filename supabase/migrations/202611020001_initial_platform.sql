@@ -225,7 +225,7 @@ alter table public.messages enable row level security;
 -- Profiles
 drop policy if exists "profiles read self staff" on public.profiles;
 create policy "profiles read self staff" on public.profiles for select to authenticated
-using(id=auth.uid() or public.is_staff());
+using(id=auth.uid() or public.is_management() or exists(select 1 from public.enrollments e join public.class_sections cs on cs.id=e.section_id where e.student_id=profiles.id and cs.teacher_id=auth.uid()));
 drop policy if exists "profiles update self" on public.profiles;
 create policy "profiles update self" on public.profiles for update to authenticated
 using(id=auth.uid() or public.is_management())
@@ -247,27 +247,27 @@ create policy "management manage courses" on public.courses for all to authentic
 
 drop policy if exists "sections visible to enrolled or staff" on public.class_sections;
 create policy "sections visible to enrolled or staff" on public.class_sections for select to authenticated
-using(public.is_staff() or exists(select 1 from public.enrollments e where e.section_id=id and e.student_id=auth.uid() and e.status='active'));
+using(public.is_management() or teacher_id=auth.uid() or exists(select 1 from public.enrollments e where e.section_id=id and e.student_id=auth.uid() and e.status='active'));
 drop policy if exists "management and assigned teachers manage sections" on public.class_sections;
 create policy "management and assigned teachers manage sections" on public.class_sections for all to authenticated
 using(public.is_management() or teacher_id=auth.uid()) with check(public.is_management() or teacher_id=auth.uid());
 
 drop policy if exists "enrollment visible to owner or staff" on public.enrollments;
-create policy "enrollment visible to owner or staff" on public.enrollments for select to authenticated using(student_id=auth.uid() or public.is_staff());
+create policy "enrollment visible to owner or staff" on public.enrollments for select to authenticated using(student_id=auth.uid() or public.is_management() or exists(select 1 from public.class_sections cs where cs.id=section_id and cs.teacher_id=auth.uid()));
 drop policy if exists "management manage enrollments" on public.enrollments;
 create policy "management manage enrollments" on public.enrollments for all to authenticated using(public.is_management()) with check(public.is_management());
 
 -- Sessions, attendance and assessment
 drop policy if exists "sessions visible to class" on public.class_sessions;
 create policy "sessions visible to class" on public.class_sessions for select to authenticated
-using(public.is_staff() or exists(select 1 from public.enrollments e where e.section_id=class_sessions.section_id and e.student_id=auth.uid() and e.status='active'));
+using(public.is_management() or exists(select 1 from public.class_sections cs where cs.id=class_sessions.section_id and cs.teacher_id=auth.uid()) or exists(select 1 from public.enrollments e where e.section_id=class_sessions.section_id and e.student_id=auth.uid() and e.status='active'));
 drop policy if exists "staff manage sessions" on public.class_sessions;
 create policy "staff manage sessions" on public.class_sessions for all to authenticated
 using(public.is_management() or exists(select 1 from public.class_sections s where s.id=section_id and s.teacher_id=auth.uid()))
 with check(public.is_management() or exists(select 1 from public.class_sections s where s.id=section_id and s.teacher_id=auth.uid()));
 
 drop policy if exists "attendance visible to student or staff" on public.attendance;
-create policy "attendance visible to student or staff" on public.attendance for select to authenticated using(student_id=auth.uid() or public.is_staff());
+create policy "attendance visible to student or staff" on public.attendance for select to authenticated using(student_id=auth.uid() or public.is_management() or exists(select 1 from public.class_sessions cs join public.class_sections sec on sec.id=cs.section_id where cs.id=attendance.session_id and sec.teacher_id=auth.uid()));
 drop policy if exists "staff manage attendance" on public.attendance;
 create policy "staff manage attendance" on public.attendance for all to authenticated
 using(public.is_management() or exists(select 1 from public.class_sessions cs join public.class_sections s on s.id=cs.section_id where cs.id=session_id and s.teacher_id=auth.uid()))
@@ -290,7 +290,7 @@ with check(student_id=auth.uid() and exists(select 1 from public.assignments a j
 drop policy if exists "students update own ungraded submissions" on public.submissions;
 create policy "students update own ungraded submissions" on public.submissions for update to authenticated
 using(student_id=auth.uid() and status in ('draft','submitted') and score is null)
-with check(student_id=auth.uid() and status in ('draft','submitted') and score is null);
+with check(student_id=auth.uid() and status in ('draft','submitted') and score is null and exists(select 1 from public.assignments a join public.enrollments e on e.section_id=a.section_id where a.id=assignment_id and e.student_id=auth.uid() and e.status='active' and a.is_published));
 drop policy if exists "staff grade submissions" on public.submissions;
 create policy "staff grade submissions" on public.submissions for update to authenticated
 using(public.is_management() or exists(select 1 from public.assignments a join public.class_sections s on s.id=a.section_id where a.id=assignment_id and s.teacher_id=auth.uid()))
