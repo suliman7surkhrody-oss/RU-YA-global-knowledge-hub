@@ -299,7 +299,7 @@ with check(public.is_management() or exists(select 1 from public.assignments a j
 -- Role-scoped recipient directory; exposes names and roles, never email addresses.
 create or replace function public.get_message_recipients()
 returns table(id uuid, full_name text, role public.app_role)
-language sql stable security definer set search_path = public as $
+language sql stable security definer set search_path = public as $$
  select p.id,p.full_name,p.role
  from public.profiles p
  where p.is_active and p.id <> auth.uid()
@@ -312,7 +312,7 @@ language sql stable security definer set search_path = public as $
              where e.student_id=auth.uid() and cs.teacher_id=p.id and e.status='active')
  )
  order by p.full_name
-$;
+$$;
 grant execute on function public.get_message_recipients() to authenticated;
 
 -- Library and communications
@@ -342,7 +342,7 @@ create policy "recipient marks message read" on public.messages for update to au
 
 -- Learners cannot forge grades or feedback by editing their own submission.
 create or replace function public.protect_submission_grade()
-returns trigger language plpgsql as $
+returns trigger language plpgsql as $$
 begin
  if auth.uid() = old.student_id and (
    new.score is distinct from old.score or
@@ -360,7 +360,7 @@ for each row execute procedure public.protect_submission_grade();
 
 -- Message recipients may mark a message read, but cannot rewrite its contents.
 create or replace function public.protect_message_content()
-returns trigger language plpgsql as $
+returns trigger language plpgsql as $$
 begin
  if auth.uid() = old.recipient_id and (
    new.sender_id is distinct from old.sender_id or
