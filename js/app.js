@@ -4,7 +4,7 @@ const $=id=>document.getElementById(id), db=()=>window.ruyaSupabase;
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const nice=s=>String(s||"").replace(/[_-]/g," ").replace(/\b\w/g,c=>c.toUpperCase());
 let user=null,profile=null,page="Overview";
-const menus={student:["Overview","My courses","Class schedule","Assignments","Attendance","Learning library","Messages"],teacher:["Overview","My classes","Teaching schedule","Assignments & grading","Attendance register","Learning resources","Messages"],management:["Overview","Academic programs","People & roles","Timetables","Academic records","Learning library","Announcements","Messages"]};
+const menus={student:["Overview","My courses","Class schedule","Assignments","Attendance","Learning library","Announcements","Messages"],teacher:["Overview","My classes","Teaching schedule","Assignments & grading","Attendance register","Learning resources","Announcements","Messages"],management:["Overview","Academic programs","People & roles","Timetables","Academic records","Learning library","Announcements","Messages"]};
 function toast(s){const e=$("toast");e.textContent=s;e.classList.add("show");setTimeout(()=>e.classList.remove("show"),3200)}
 function close(){ $("loginModal").classList.remove("show");$("authPassword").value=""; }
 function mode(m){const signup=m==="signup";$("authNameWrap").hidden=!signup;$("authModeTitle").textContent=signup?"Create your student account":"Welcome back";$("authSubmit").textContent=signup?"Create account":"Sign in";$("authSubmit").onclick=signup?signupAction:signin;$("authSwitch").textContent=signup?"Already registered? Sign in":"Create a student account";$("authSwitch").dataset.mode=signup?"signin":"signup";$("authSwitch").onclick=()=>mode(signup?"signin":"signup");$("authError").textContent=""}
@@ -175,7 +175,14 @@ async function messages(){
 }
 async function records(){
  const [a,b,c]=await Promise.all([db().from("attendance").select("id"),db().from("submissions").select("id"),db().from("enrollments").select("id")]);for(const x of [a,b,c])if(x.error)throw x.error;
- return panel("Academic records summary",'<div class="workspace-stats"><div class="workspace-stat"><div class="stat-top">Attendance entries</div><strong>'+a.data.length+'</strong></div><div class="workspace-stat"><div class="stat-top">Submissions</div><strong>'+b.data.length+'</strong></div><div class="workspace-stat"><div class="stat-top">Enrollments</div><strong>'+c.data.length+'</strong></div></div>');
+ let termForm="",termRows="";
+ if(profile.role==="management"){
+  const t=await db().from("academic_terms").select("*").order("starts_on",{ascending:false});if(t.error)throw t.error;
+  termRows=(t.data||[]).map(x=>row(x.name,date(x.starts_on)+" – "+date(x.ends_on),x.is_current?"CURRENT":"TERM")).join("")||empty("No academic terms have been configured.");
+  termForm='<form class="live-form" id="termForm">'+field("Term name","name")+'<label class="live-field">Start date<input type="date" name="starts_on" required></label><label class="live-field">End date<input type="date" name="ends_on" required></label><label class="check-field"><input type="checkbox" name="is_current"> Set as current term</label><button class="btn btn-green">Create academic term</button></form>';
+  setTimeout(()=>bind("termForm",async f=>{const v=formData(f);if(v.ends_on<v.starts_on)throw Error("End date must be after the start date.");if(v.is_current){const reset=await db().from("academic_terms").update({is_current:false}).eq("is_current",true);if(reset.error)throw reset.error}const q=await db().from("academic_terms").insert({name:v.name,starts_on:v.starts_on,ends_on:v.ends_on,is_current:!!v.is_current});if(q.error)throw q.error;toast("Academic term created.");render(page)}),0);
+ }
+ return panel("Academic records summary",'<div class="workspace-stats"><div class="workspace-stat"><div class="stat-top">Attendance entries</div><strong>'+a.data.length+'</strong></div><div class="workspace-stat"><div class="stat-top">Submissions</div><strong>'+b.data.length+'</strong></div><div class="workspace-stat"><div class="stat-top">Enrollments</div><strong>'+c.data.length+'</strong></div></div>')+termForm+panel("Academic terms",termRows);
 }
 document.addEventListener("click",async e=>{
  const file=e.target.closest("[data-download-path]");if(file){const win=window.open("about:blank","_blank");const signed=await db().storage.from("ruya-private").createSignedUrl(file.dataset.downloadPath,60);if(signed.error){if(win)win.close();toast(signed.error.message)}else if(win)win.location.href=signed.data.signedUrl;else toast("Allow pop-ups to open this private file.");return}
