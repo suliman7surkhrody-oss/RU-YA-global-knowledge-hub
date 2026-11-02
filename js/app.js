@@ -197,7 +197,7 @@ window.ruyaNavigate=render;window.ruyaSignIn=signin;window.ruyaSignUp=signupActi
 document.addEventListener("DOMContentLoaded",async()=>{
  $("year").textContent=new Date().getFullYear();$("loginModal").addEventListener("click",e=>{if(e.target===$("loginModal"))close()});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("loginModal").classList.contains("show"))close()});
  const status=$("backendStatus"),guide=$("backendGuide");if(!db()){if(status)status.innerHTML='Secure account access is being prepared. Portal sign-in will become available when RU’YA connects its verified account service. <a href="https://github.com/suliman7surkhrody-oss/RU-YA-global-knowledge-hub/blob/main/docs/PRODUCTION_SETUP.md" target="_blank" rel="noopener">View setup guide ↗</a>';$("authSubmit").disabled=true;return}else{if(status)status.textContent="Secure account service connected. Sign in with your RU’YA email and password.";if(guide)guide.hidden=true;$("authSubmit").disabled=false}
- const r=await db().auth.getSession();if(r.data.session){try{await loadProfile(r.data.session.user)}catch(e){toast(e.message)}}
+ const r=await db().auth.getSession();if(r.data.session){try{await loadProfile(r.data.session.user)}catch(e){await db().auth.signOut();user=null;profile=null;$("dashboard").classList.remove("show");$("publicSite").style.display="block";toast("We could not open your RU’YA profile. Please sign in again or contact management.")}}
  db().auth.onAuthStateChange((event)=>{if(event==="SIGNED_OUT"){user=null;profile=null;$("dashboard").classList.remove("show");$("publicSite").style.display="block"}});
 });
 })();
