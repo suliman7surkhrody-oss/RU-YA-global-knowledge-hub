@@ -11,7 +11,7 @@ The RU'YA repository contains the public institutional website and the evolving 
 - Production activation and security checklist in [docs/PRODUCTION_SETUP.md](docs/PRODUCTION_SETUP.md).
 
 ## Deployment and activation
-The public website is hosted on GitHub Pages. Authentication and private academic records require an RU'YA-owned Supabase project. Apply [the database migration](supabase/migrations/202611020001_initial_platform.sql), configure [the browser project settings](js/supabase-config.js), and follow [the production setup guide](docs/PRODUCTION_SETUP.md).
+The public website is hosted on GitHub Pages. Authentication and private academic records require an RU'YA-owned Supabase project. Apply [the database migration](supabase/migrations/20261102000100_initial_platform.sql), configure [the browser project settings](js/supabase-config.js), and follow [the production setup guide](docs/PRODUCTION_SETUP.md).
 
 ## Security
 New public registrations are students only. Teacher and management permissions must be assigned by authorized management. Row-level security restricts data access by role and class assignment. Do not enter real student or staff information until the RU'YA-owned backend is configured, email delivery is secured, policies are reviewed and backups are enabled.
