@@ -8,7 +8,7 @@ const menus={student:["Overview","My courses","Class schedule","Assignments","At
 function toast(s){const e=$("toast");e.textContent=s;e.classList.add("show");setTimeout(()=>e.classList.remove("show"),3200)}
 let authSignup=false;
 function close(){ $("loginModal").classList.remove("show");$("authPassword").value="";$("authError").textContent=""; }
-function mode(m){authSignup=m==="signup";$("authNameWrap").hidden=!authSignup;$("authName").required=authSignup;$("authPassword").autocomplete=authSignup?"new-password":"current-password";$("authModeTitle").textContent=authSignup?"Create your student account":"Welcome back";$("authSubmit").textContent=authSignup?"Create account":"Sign in";$("authSwitch").textContent=authSignup?"Already registered? Sign in":"Create a student account";$("authSwitch").dataset.mode=authSignup?"signin":"signup";$("authSwitch").onclick=()=>mode(authSignup?"signin":"signup");$("authError").textContent="";}
+function mode(m){authSignup=m==="signup";$("authNameWrap").hidden=!authSignup;$("authName").required=authSignup;$("authPassword").autocomplete=authSignup?"new-password":"current-password";$("authPassword").minLength=authSignup?8:1;$("authPassword").placeholder=authSignup?"At least 8 characters":"Your password";$("authModeTitle").textContent=authSignup?"Create your student account":"Welcome back";$("authSubmit").textContent=authSignup?"Create account":"Sign in";$("authSwitch").textContent=authSignup?"Already registered? Sign in":"Create a student account";$("authSwitch").dataset.mode=authSignup?"signin":"signup";$("authSwitch").onclick=()=>mode(authSignup?"signin":"signup");$("authError").textContent="";}
 function openLogin(){ $("loginModal").classList.add("show");mode("signin");setTimeout(()=>$("authEmail").focus(),50)}
 function openLogin(){ $("loginModal").classList.add("show");mode("signin") }
 async function signin(){return authenticate(false)}
@@ -16,7 +16,7 @@ async function signupAction(){return authenticate(true)}
 async function authenticate(signup){
  if(!db())return $("authError").textContent="Backend setup is not complete. Please see the production setup guide.";
  const email=$("authEmail").value.trim(),password=$("authPassword").value;
- if(!email||password.length<8)return $("authError").textContent="Enter your email and a password of at least 8 characters.";
+ if(!email||!password)return $("authError").textContent="Enter your email address and password.";if(signup&&password.length<8)return $("authError").textContent="For a new account, use a password with at least 8 characters.";
  $("authSubmit").disabled=true;$("authError").textContent="";
  try{
   let result;
