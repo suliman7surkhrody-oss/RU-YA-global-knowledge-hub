@@ -7,7 +7,7 @@ let user=null,profile=null,page="Overview";
 const menus={student:["Overview","My courses","Class schedule","Assignments","Attendance","Learning library","Messages"],teacher:["Overview","My classes","Teaching schedule","Assignments & grading","Attendance register","Learning resources","Messages"],management:["Overview","Academic programs","People & roles","Timetables","Academic records","Learning library","Announcements","Messages"]};
 function toast(s){const e=$("toast");e.textContent=s;e.classList.add("show");setTimeout(()=>e.classList.remove("show"),3200)}
 function close(){ $("loginModal").classList.remove("show") }
-function mode(m){const signup=m==="signup";$("authNameWrap").hidden=!signup;$("authModeTitle").textContent=signup?"Create your student account":"Welcome back";$("authSubmit").textContent=signup?"Create account":"Sign in";$("authSubmit").onclick=signup?signupAction:signin;$("authSwitch").textContent=signup?"Already registered? Sign in":"Create a student account";$("authSwitch").onclick=()=>mode(signup?"signin":"signup");$("authError").textContent=""}
+function mode(m){const signup=m==="signup";$("authNameWrap").hidden=!signup;$("authModeTitle").textContent=signup?"Create your student account":"Welcome back";$("authSubmit").textContent=signup?"Create account":"Sign in";$("authSubmit").onclick=signup?signupAction:signin;$("authSwitch").textContent=signup?"Already registered? Sign in":"Create a student account";$("authSwitch").dataset.mode=signup?"signin":"signup";$("authSwitch").onclick=()=>mode(signup?"signin":"signup");$("authError").textContent=""}
 function openLogin(){ $("loginModal").classList.add("show");mode("signin") }
 async function signin(){return authenticate(false)}
 async function signupAction(){return authenticate(true)}
@@ -181,7 +181,7 @@ document.addEventListener("click",async e=>{
  const a=e.target.closest("[data-active-id]");if(a){const q=await db().from("profiles").update({is_active:a.dataset.active!=="true"}).eq("id",a.dataset.activeId);if(q.error)toast(q.error.message);else render(page)}
 });
 async function signOut(){if(db())await db().auth.signOut();user=null;profile=null;$("dashboard").classList.remove("show");$("publicSite").style.display="block";window.scrollTo(0,0)}
-window.ruyaNavigate=render;window.ruyaShowLogin=openLogin;window.ruyaCloseLogin=close;window.ruyaSignOut=signOut;window.ruyaResetPassword=resetPassword;window.ruyaAuthSwitch=()=>mode($("authSwitch").dataset.mode||"signup");
+window.ruyaNavigate=render;window.ruyaSignIn=signin;window.ruyaSignUp=signupAction;window.ruyaShowLogin=openLogin;window.ruyaCloseLogin=close;window.ruyaSignOut=signOut;window.ruyaResetPassword=resetPassword;window.ruyaAuthSwitch=()=>mode($("authSwitch").dataset.mode||"signup");
 document.addEventListener("DOMContentLoaded",async()=>{
  $("year").textContent=new Date().getFullYear();$("loginModal").addEventListener("click",e=>{if(e.target===$("loginModal"))close()});
  if(!db()){const n=document.querySelector(".backend-status");if(n)n.textContent="Backend setup required";return}
