@@ -95,9 +95,26 @@ async function courses(){
  return form+panel("Course catalogue",(r.data||[]).map(x=>row(x.title||x.courses?.title,x.code||x.courses?.code||"","ACTIVE")).join("")||empty("No courses have been added."));
 }
 async function classes(){
- const r=profile.role==="student"?await db().from("enrollments").select("class_sections(title,starts_at,meeting_url,courses(title))").eq("student_id",user.id).eq("status","active"):await db().from("class_sections").select("title,starts_at,meeting_url,courses(title)").eq("teacher_id",user.id);
- if(r.error)throw r.error;const items=(r.data||[]).map(x=>x.class_sections||x);
- return panel("Classes and timetable",items.map(x=>row(x.courses?.title||x.title,x.title+" · "+date(x.starts_at),x.meeting_url?"MEETING LINK":"CLASS")).join("")||empty("No classes scheduled yet."));
+ let sections=[];
+ if(profile.role==="student"){
+  const q=await db().from("enrollments").select("class_sections(id,title,starts_at,meeting_url,courses(title))").eq("student_id",user.id).eq("status","active");if(q.error)throw q.error;sections=(q.data||[]).map(x=>x.class_sections).filter(Boolean);
+ }else{
+  const q=profile.role==="management"?await db().from("class_sections").select("id,title,starts_at,meeting_url,courses(title)"):await db().from("class_sections").select("id,title,starts_at,meeting_url,courses(title)").eq("teacher_id",user.id);if(q.error)throw q.error;sections=q.data||[];
+ }
+ let form="";
+ if(profile.role==="management"){
+  const [cs,ts]=await Promise.all([db().from("courses").select("id,title"),db().from("profiles").select("id,full_name,email").eq("role","teacher").eq("is_active",true)]);
+  if(cs.error)throw cs.error;if(ts.error)throw ts.error;
+  form='<form class="live-form" id="sectionForm"><label class="live-field">Course<select name="course_id">'+cs.data.map(x=>'<option value="'+x.id+'">'+esc(x.title)+'</option>').join("")+'</select></label><label class="live-field">Teacher<select name="teacher_id"><option value="">Unassigned</option>'+ts.data.map(x=>'<option value="'+x.id+'">'+esc(x.full_name||x.email)+'</option>').join("")+'</select></label>'+field("Section name","title")+'<label class="live-field">Meeting URL<input name="meeting_url" type="url"></label><button class="btn btn-green">Create class section</button></form>';
+  setTimeout(()=>bind("sectionForm",async f=>{const v=formData(f);const q=await db().from("class_sections").insert({course_id:v.course_id,teacher_id:v.teacher_id||null,title:v.title,meeting_url:v.meeting_url||null});if(q.error)throw q.error;toast("Class section created.");render(page)}),0);
+ }
+ if(profile.role==="teacher"||profile.role==="management"){
+  form+='<form class="live-form" id="sessionForm"><label class="live-field">Class section<select name="section_id">'+sections.map(x=>'<option value="'+x.id+'">'+esc(x.courses?.title||x.title)+' · '+esc(x.title)+'</option>').join("")+'</select></label>'+field("Session title","title")+'<label class="live-field">Starts at<input name="starts_at" type="datetime-local" required></label><label class="live-field">Ends at<input name="ends_at" type="datetime-local" required></label><label class="live-field">Meeting URL<input name="meeting_url" type="url"></label><button class="btn btn-green">Schedule session</button></form>';
+  setTimeout(()=>bind("sessionForm",async f=>{const v=formData(f);const q=await db().from("class_sessions").insert({section_id:v.section_id,title:v.title,starts_at:new Date(v.starts_at).toISOString(),ends_at:new Date(v.ends_at).toISOString(),meeting_url:v.meeting_url||null});if(q.error)throw q.error;toast("Class session scheduled.");render(page)}),0);
+ }
+ const ses=await db().from("class_sessions").select("id,title,starts_at,meeting_url,class_sections(title,courses(title))").order("starts_at");if(ses.error)throw ses.error;
+ const list=(ses.data||[]).map(x=>row(x.title+" · "+(x.class_sections?.courses?.title||x.class_sections?.title||""),date(x.starts_at),x.meeting_url?"MEETING LINK":"SESSION")).join("");
+ return form+panel("Classes and scheduled sessions",list||empty("No class sessions scheduled yet."));
 }
 async function assignments(){
  if(profile.role==="student"){
@@ -130,8 +147,8 @@ async function announcements(){
  return form+panel("Announcements",(r.data||[]).map(x=>'<article class="live-record"><h4>'+esc(x.title)+'</h4><p>'+esc(x.body)+'</p><small>'+esc(date(x.published_at||x.created_at))+'</small></article>').join("")||empty("No announcements."));
 }
 async function messages(){
- const [r,u]=await Promise.all([db().from("messages").select("*").order("created_at",{ascending:false}),db().from("profiles").select("id,full_name,email").neq("id",user.id)]);if(r.error)throw r.error;if(u.error)throw u.error;
- const form='<form class="live-form" id="messageForm"><label class="live-field">Recipient<select name="recipient_id">'+u.data.map(x=>'<option value="'+x.id+'">'+esc(x.full_name||x.email)+'</option>').join("")+'</select></label>'+field("Subject","subject")+'<label class="live-field">Message<textarea name="body" required></textarea></label><button class="btn btn-green">Send message</button></form>';
+ const [r,u]=await Promise.all([db().from("messages").select("*").order("created_at",{ascending:false}),db().rpc("get_message_recipients")]);if(r.error)throw r.error;if(u.error)throw u.error;
+ const form='<form class="live-form" id="messageForm"><label class="live-field">Recipient<select name="recipient_id">'+u.data.map(x=>'<option value="'+x.id+'">'+esc(x.full_name||nice(x.role))+' · '+esc(x.role)+'</option>').join("")+'</select></label>'+field("Subject","subject")+'<label class="live-field">Message<textarea name="body" required></textarea></label><button class="btn btn-green">Send message</button></form>';
  setTimeout(()=>bind("messageForm",async f=>{const v=formData(f);const q=await db().from("messages").insert({sender_id:user.id,recipient_id:v.recipient_id,subject:v.subject,body:v.body});if(q.error)throw q.error;toast("Message sent.");render(page)}),0);
  return form+panel("Inbox and sent messages",(r.data||[]).map(x=>'<article class="live-record"><h4>'+esc(x.subject||"Message")+'</h4><p>'+esc(x.body)+'</p><small>'+(x.sender_id===user.id?"Sent":"Received")+' · '+esc(date(x.created_at))+'</small></article>').join("")||empty("No messages."));
 }
