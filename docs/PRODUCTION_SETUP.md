@@ -6,7 +6,7 @@ The repository now contains the first production backend foundation. The public 
 
 1. Create a Supabase project owned by RU'YA (not a personal test project).
 2. Choose a strong database password and keep it in the organization's password manager.
-3. In **SQL Editor**, run `supabase/migrations/202611020001_initial_platform.sql`.
+3. In **SQL Editor**, run `supabase/migrations/20261102000100_initial_platform.sql`.
 4. In **Project Settings → API**, copy the Project URL and anon/publishable key.
 5. Put those two public values in `js/supabase-config.js`. Never use the service-role key in the browser or commit it to Git.
 6. The migration creates the **private** `ruya-private` Storage bucket and role-scoped policies for learner submissions and staff library uploads. Verify these policies in Supabase Storage before uploading real student records.
