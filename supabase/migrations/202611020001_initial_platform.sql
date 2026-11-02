@@ -271,7 +271,7 @@ create policy "attendance visible to student or staff" on public.attendance for 
 drop policy if exists "staff manage attendance" on public.attendance;
 create policy "staff manage attendance" on public.attendance for all to authenticated
 using(public.is_management() or exists(select 1 from public.class_sessions cs join public.class_sections s on s.id=cs.section_id where cs.id=session_id and s.teacher_id=auth.uid()))
-with check(public.is_management() or exists(select 1 from public.class_sessions cs join public.class_sections s on s.id=cs.section_id where cs.id=session_id and s.teacher_id=auth.uid()));
+with check((public.is_management() or exists(select 1 from public.class_sessions cs join public.class_sections s on s.id=cs.section_id where cs.id=session_id and s.teacher_id=auth.uid())) and exists(select 1 from public.class_sessions cs join public.enrollments e on e.section_id=cs.section_id where cs.id=session_id and e.student_id=attendance.student_id and e.status='active'));
 
 drop policy if exists "assignments visible to class" on public.assignments;
 create policy "assignments visible to class" on public.assignments for select to authenticated
