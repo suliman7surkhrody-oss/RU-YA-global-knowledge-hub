@@ -6,8 +6,10 @@ const nice=s=>String(s||"").replace(/[_-]/g," ").replace(/\b\w/g,c=>c.toUpperCas
 let user=null,profile=null,page="Overview";
 const menus={student:["Overview","My courses","Class schedule","Assignments","Attendance","Learning library","Announcements","Messages"],teacher:["Overview","My classes","Teaching schedule","Assignments & grading","Attendance register","Learning resources","Announcements","Messages"],management:["Overview","Academic programs","People & roles","Timetables","Academic records","Learning library","Announcements","Messages"]};
 function toast(s){const e=$("toast");e.textContent=s;e.classList.add("show");setTimeout(()=>e.classList.remove("show"),3200)}
-function close(){ $("loginModal").classList.remove("show");$("authPassword").value=""; }
-function mode(m){const signup=m==="signup";$("authNameWrap").hidden=!signup;$("authModeTitle").textContent=signup?"Create your student account":"Welcome back";$("authSubmit").textContent=signup?"Create account":"Sign in";$("authSubmit").onclick=signup?signupAction:signin;$("authSwitch").textContent=signup?"Already registered? Sign in":"Create a student account";$("authSwitch").dataset.mode=signup?"signin":"signup";$("authSwitch").onclick=()=>mode(signup?"signin":"signup");$("authError").textContent=""}
+let authSignup=false;
+function close(){ $("loginModal").classList.remove("show");$("authPassword").value="";$("authError").textContent=""; }
+function mode(m){authSignup=m==="signup";$("authNameWrap").hidden=!authSignup;$("authName").required=authSignup;$("authPassword").autocomplete=authSignup?"new-password":"current-password";$("authModeTitle").textContent=authSignup?"Create your student account":"Welcome back";$("authSubmit").textContent=authSignup?"Create account":"Sign in";$("authSwitch").textContent=authSignup?"Already registered? Sign in":"Create a student account";$("authSwitch").dataset.mode=authSignup?"signin":"signup";$("authSwitch").onclick=()=>mode(authSignup?"signin":"signup");$("authError").textContent="";}
+function openLogin(){ $("loginModal").classList.add("show");mode("signin");setTimeout(()=>$("authEmail").focus(),50)}
 function openLogin(){ $("loginModal").classList.add("show");mode("signin") }
 async function signin(){return authenticate(false)}
 async function signupAction(){return authenticate(true)}
@@ -21,12 +23,12 @@ async function authenticate(signup){
   if(signup){const name=$("authName").value.trim();if(!name)throw Error("Enter your full name.");result=await db().auth.signUp({email,password,options:{data:{full_name:name}}});}
   else result=await db().auth.signInWithPassword({email,password});
   if(result.error)throw result.error;
-  if(result.data.session){await loadProfile(result.data.user);close()}
-  else $("authError").textContent="Account created. Check your email to confirm it, then sign in.";
+  if(result.data.session){try{await loadProfile(result.data.user);close()}catch(profileError){await db().auth.signOut();user=null;profile=null;$("dashboard").classList.remove("show");$("publicSite").style.display="block";throw new Error("Your account was authenticated, but its RU’YA profile could not be opened. Please contact management or try again. "+(profileError.message||""))}}
+  else {$("authError").textContent="Your account has been created. Check your inbox (and spam folder) to confirm your email, then return here to sign in.";mode("signin");}
  }catch(e){$("authError").textContent=e.message||"Authentication failed."}
  finally{$("authSubmit").disabled=false}
 }
-async function resetPassword(){const email=$("authEmail").value.trim();if(!db()||!email)return toast("Enter your email first.");const r=await db().auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});toast(r.error?r.error.message:"Password reset instructions sent if the account exists.")}
+async function resetPassword(){const email=$("authEmail").value.trim();if(!db()){$("authError").textContent="Secure account access is not connected yet. Please see the setup guide.";return}if(!email){$("authError").textContent="Enter your account email address first."; $("authEmail").focus();return}const r=await db().auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});$("authError").textContent=r.error?r.error.message:"If an account exists for this address, password-reset instructions have been sent."}
 async function loadProfile(u){
  const r=await db().from("profiles").select("*").eq("id",u.id).single();if(r.error)throw r.error;
  if(!r.data.is_active){await db().auth.signOut();throw Error("This account is inactive. Contact RU’YA management.")}
@@ -190,10 +192,10 @@ document.addEventListener("click",async e=>{
  const a=e.target.closest("[data-active-id]");if(a){const q=await db().from("profiles").update({is_active:a.dataset.active!=="true"}).eq("id",a.dataset.activeId);if(q.error)toast(q.error.message);else render(page)}
 });
 async function signOut(){if(db())await db().auth.signOut();$("authPassword").value="";user=null;profile=null;$("dashboard").classList.remove("show");$("publicSite").style.display="block";window.scrollTo(0,0)}
-window.ruyaNavigate=render;window.ruyaSignIn=signin;window.ruyaSignUp=signupAction;window.ruyaShowLogin=openLogin;window.ruyaCloseLogin=close;window.ruyaSignOut=signOut;window.ruyaResetPassword=resetPassword;window.ruyaAuthSwitch=()=>mode($("authSwitch").dataset.mode||"signup");
+window.ruyaNavigate=render;window.ruyaSignIn=signin;window.ruyaSignUp=signupAction;window.ruyaAuthSubmit=()=>authenticate(authSignup);window.ruyaShowLogin=openLogin;window.ruyaCloseLogin=close;window.ruyaSignOut=signOut;window.ruyaResetPassword=resetPassword;window.ruyaAuthSwitch=()=>mode($("authSwitch").dataset.mode||"signup");
 document.addEventListener("DOMContentLoaded",async()=>{
  $("year").textContent=new Date().getFullYear();$("loginModal").addEventListener("click",e=>{if(e.target===$("loginModal"))close()});
- if(!db()){const n=document.querySelector(".backend-status");if(n)n.textContent="Backend setup required";return}
+ const status=$("backendStatus"),guide=$("backendGuide");if(!db()){if(status)status.innerHTML='Secure account access is being prepared. Portal sign-in will become available when RU’YA connects its verified account service. <a href="https://github.com/suliman7surkhrody-oss/RU-YA-global-knowledge-hub/blob/main/docs/PRODUCTION_SETUP.md" target="_blank" rel="noopener">View setup guide ↗</a>';$("authSubmit").disabled=true;return}else{if(status)status.textContent="Secure account service connected. Sign in with your RU’YA email and password.";if(guide)guide.hidden=true;$("authSubmit").disabled=false}
  const r=await db().auth.getSession();if(r.data.session){try{await loadProfile(r.data.session.user)}catch(e){toast(e.message)}}
  db().auth.onAuthStateChange((event)=>{if(event==="SIGNED_OUT"){user=null;profile=null;$("dashboard").classList.remove("show");$("publicSite").style.display="block"}});
 });
