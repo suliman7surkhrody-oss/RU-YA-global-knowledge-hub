@@ -290,7 +290,7 @@ using(public.is_management() or exists(select 1 from public.class_sections s whe
 with check(public.is_management() or exists(select 1 from public.class_sections s where s.id=section_id and public.is_teacher() and s.teacher_id=auth.uid()));
 
 drop policy if exists "attendance visible to student or staff" on public.attendance;
-create policy "attendance visible to student or staff" on public.attendance for select to authenticated using(student_id=auth.uid() or public.is_management() or exists(select 1 from public.class_sessions cs join public.class_sections sec on sec.id=cs.section_id where cs.id=attendance.session_id and sec.teacher_id=auth.uid()));
+create policy "attendance visible to student or staff" on public.attendance for select to authenticated using(student_id=auth.uid() or public.is_management() or exists(select 1 from public.class_sessions cs join public.class_sections sec on sec.id=cs.section_id where cs.id=attendance.session_id and public.is_teacher() and sec.teacher_id=auth.uid()));
 drop policy if exists "staff manage attendance" on public.attendance;
 create policy "staff manage attendance" on public.attendance for all to authenticated
 using(public.is_management() or exists(select 1 from public.class_sessions cs join public.class_sections s on s.id=cs.section_id where cs.id=session_id and public.is_teacher() and s.teacher_id=auth.uid()))
