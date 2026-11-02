@@ -6,10 +6,11 @@ const nice=s=>String(s||"").replace(/[_-]/g," ").replace(/\b\w/g,c=>c.toUpperCas
 let user=null,profile=null,page="Overview";
 const menus={student:["Overview","My courses","Class schedule","Assignments","Attendance","Learning library","Announcements","Messages"],teacher:["Overview","My classes","Teaching schedule","Assignments & grading","Attendance register","Learning resources","Announcements","Messages"],management:["Overview","Academic programs","People & roles","Timetables","Academic records","Learning library","Announcements","Messages"]};
 function toast(s){const e=$("toast");e.textContent=s;e.classList.add("show");setTimeout(()=>e.classList.remove("show"),3200)}
-let authSignup=false;
-function close(){ $("loginModal").classList.remove("show");$("authPassword").value="";$("authError").textContent=""; }
+let authSignup=false,authReturnFocus=null;
+function close(){ $("loginModal").classList.remove("show");$("authPassword").value="";$("authError").textContent="";if(authReturnFocus&&typeof authReturnFocus.focus==="function")authReturnFocus.focus(); }
+function authErrorMessage(e){const m=String(e&&e.message||"").toLowerCase();if(m.includes("invalid login credentials"))return "The email address or password is incorrect. Check both and try again.";if(m.includes("email not confirmed"))return "Please confirm your email address using the link sent to your inbox.";if(m.includes("user already registered"))return "An account with this email already exists. Please sign in instead.";if(m.includes("password should be at least"))return "For a new account, choose a password with at least 8 characters.";return e&&e.message?e.message:"Authentication failed. Please try again.";}
 function mode(m){authSignup=m==="signup";$("authNameWrap").hidden=!authSignup;$("authName").required=authSignup;$("authPassword").autocomplete=authSignup?"new-password":"current-password";$("authPassword").minLength=authSignup?8:1;$("authPassword").placeholder=authSignup?"At least 8 characters":"Your password";$("authModeTitle").textContent=authSignup?"Create your student account":"Welcome back";$("authSubmit").textContent=authSignup?"Create account":"Sign in";$("authSwitch").textContent=authSignup?"Already registered? Sign in":"Create a student account";$("authSwitch").dataset.mode=authSignup?"signin":"signup";$("authSwitch").onclick=()=>mode(authSignup?"signin":"signup");$("authError").textContent="";}
-function openLogin(){ $("loginModal").classList.add("show");mode("signin");setTimeout(()=>$("authEmail").focus(),50)}
+function openLogin(){authReturnFocus=document.activeElement;$("loginModal").classList.add("show");mode("signin");setTimeout(()=>$("authEmail").focus(),50)}
 function openLogin(){ $("loginModal").classList.add("show");mode("signin") }
 async function signin(){return authenticate(false)}
 async function signupAction(){return authenticate(true)}
@@ -25,7 +26,7 @@ async function authenticate(signup){
   if(result.error)throw result.error;
   if(result.data.session){try{await loadProfile(result.data.user);close()}catch(profileError){await db().auth.signOut();user=null;profile=null;$("dashboard").classList.remove("show");$("publicSite").style.display="block";throw new Error("Your account was authenticated, but its RU’YA profile could not be opened. Please contact management or try again. "+(profileError.message||""))}}
   else {$("authError").textContent="Your account has been created. Check your inbox (and spam folder) to confirm your email, then return here to sign in.";mode("signin");}
- }catch(e){$("authError").textContent=e.message||"Authentication failed."}
+ }catch(e){$("authError").textContent=authErrorMessage(e)}
  finally{$("authSubmit").disabled=false}
 }
 async function resetPassword(){const email=$("authEmail").value.trim();if(!db()){$("authError").textContent="Secure account access is not connected yet. Please see the setup guide.";return}if(!email){$("authError").textContent="Enter your account email address first."; $("authEmail").focus();return}const r=await db().auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});$("authError").textContent=r.error?r.error.message:"If an account exists for this address, password-reset instructions have been sent."}
@@ -194,7 +195,7 @@ document.addEventListener("click",async e=>{
 async function signOut(){if(db())await db().auth.signOut();$("authPassword").value="";user=null;profile=null;$("dashboard").classList.remove("show");$("publicSite").style.display="block";window.scrollTo(0,0)}
 window.ruyaNavigate=render;window.ruyaSignIn=signin;window.ruyaSignUp=signupAction;window.ruyaAuthSubmit=()=>authenticate(authSignup);window.ruyaShowLogin=openLogin;window.ruyaCloseLogin=close;window.ruyaSignOut=signOut;window.ruyaResetPassword=resetPassword;window.ruyaAuthSwitch=()=>mode($("authSwitch").dataset.mode||"signup");
 document.addEventListener("DOMContentLoaded",async()=>{
- $("year").textContent=new Date().getFullYear();$("loginModal").addEventListener("click",e=>{if(e.target===$("loginModal"))close()});
+ $("year").textContent=new Date().getFullYear();$("loginModal").addEventListener("click",e=>{if(e.target===$("loginModal"))close()});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("loginModal").classList.contains("show"))close()});
  const status=$("backendStatus"),guide=$("backendGuide");if(!db()){if(status)status.innerHTML='Secure account access is being prepared. Portal sign-in will become available when RU’YA connects its verified account service. <a href="https://github.com/suliman7surkhrody-oss/RU-YA-global-knowledge-hub/blob/main/docs/PRODUCTION_SETUP.md" target="_blank" rel="noopener">View setup guide ↗</a>';$("authSubmit").disabled=true;return}else{if(status)status.textContent="Secure account service connected. Sign in with your RU’YA email and password.";if(guide)guide.hidden=true;$("authSubmit").disabled=false}
  const r=await db().auth.getSession();if(r.data.session){try{await loadProfile(r.data.session.user)}catch(e){toast(e.message)}}
  db().auth.onAuthStateChange((event)=>{if(event==="SIGNED_OUT"){user=null;profile=null;$("dashboard").classList.remove("show");$("publicSite").style.display="block"}});
