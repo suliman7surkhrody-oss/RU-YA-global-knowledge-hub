@@ -25,7 +25,7 @@ async function authenticate(signup){
   else result=await db().auth.signInWithPassword({email,password});
   if(result.error)throw result.error;
   if(result.data.session){try{await loadProfile(result.data.user);close()}catch(profileError){await db().auth.signOut();user=null;profile=null;$("dashboard").classList.remove("show");$("publicSite").style.display="block";throw new Error("Your account was authenticated, but its RU’YA profile could not be opened. Please contact management or try again. "+(profileError.message||""))}}
-  else {$("authError").textContent="Your account has been created. Check your inbox (and spam folder) to confirm your email, then return here to sign in.";mode("signin");}
+  else {mode("signin");$("authError").textContent="Your account has been created. Check your inbox (and spam folder) to confirm your email, then return here to sign in."; }
  }catch(e){$("authError").textContent=authErrorMessage(e)}
  finally{$("authSubmit").disabled=false}
 }
