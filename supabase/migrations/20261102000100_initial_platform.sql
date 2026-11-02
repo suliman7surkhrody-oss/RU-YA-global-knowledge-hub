@@ -447,7 +447,7 @@ create or replace function public.validate_library_file_path()
 returns trigger language plpgsql as $$
 begin
  if new.storage_path is not null and
-    new.storage_path not like 'library/'||new.uploaded_by::text||'/%' then
+    (new.uploaded_by is null or new.storage_path not like 'library/'||new.uploaded_by::text||'/%') then
    raise exception 'Library files must be stored under the uploader''s private folder.';
  end if;
  return new;
