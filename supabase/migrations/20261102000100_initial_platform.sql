@@ -350,7 +350,10 @@ create policy "library access by visibility" on public.library_resources for sel
 using(visibility in ('authenticated','public') or public.is_staff() or
  (visibility='enrolled' and course_id is not null and exists(select 1 from public.enrollments e join public.class_sections s on s.id=e.section_id where s.course_id=library_resources.course_id and e.student_id=auth.uid() and e.status='active')));
 drop policy if exists "staff manage library" on public.library_resources;
-create policy "staff manage library" on public.library_resources for all to authenticated using(public.is_staff()) with check(public.is_staff());
+drop policy if exists "staff add library resources" on public.library_resources;
+create policy "staff add library resources" on public.library_resources for insert to authenticated with check(public.is_staff() and uploaded_by=auth.uid());
+drop policy if exists "management manage library" on public.library_resources;
+create policy "management manage library" on public.library_resources for all to authenticated using(public.is_management()) with check(public.is_management());
 
 drop policy if exists "published announcements visible" on public.announcements;
 create policy "published announcements visible" on public.announcements for select to authenticated
@@ -427,6 +430,9 @@ end $$;
 create or replace function public.validate_submission_file_path()
 returns trigger language plpgsql as $$
 begin
+ if tg_op='UPDATE' and auth.uid() is distinct from old.student_id and new.file_path is distinct from old.file_path then
+   raise exception 'Only the learner can change their submission attachment.';
+ end if;
  if auth.uid() = new.student_id and new.file_path is not null and
     new.file_path not like 'submissions/'||new.assignment_id::text||'/'||new.student_id::text||'/%' then
    raise exception 'Submission files must belong to this learner and assignment.';
