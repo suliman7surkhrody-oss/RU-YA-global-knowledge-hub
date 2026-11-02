@@ -275,7 +275,7 @@ with check(public.is_management() or exists(select 1 from public.class_sessions 
 
 drop policy if exists "assignments visible to class" on public.assignments;
 create policy "assignments visible to class" on public.assignments for select to authenticated
-using(public.is_staff() or (is_published and exists(select 1 from public.enrollments e where e.section_id=assignments.section_id and e.student_id=auth.uid() and e.status='active')));
+using(public.is_management() or exists(select 1 from public.class_sections cs where cs.id=assignments.section_id and cs.teacher_id=auth.uid()) or (is_published and exists(select 1 from public.enrollments e where e.section_id=assignments.section_id and e.student_id=auth.uid() and e.status='active')));
 drop policy if exists "staff manage assignments" on public.assignments;
 create policy "staff manage assignments" on public.assignments for all to authenticated
 using(public.is_management() or exists(select 1 from public.class_sections s where s.id=section_id and s.teacher_id=auth.uid()))
@@ -316,6 +316,26 @@ drop policy if exists "send messages as self" on public.messages;
 create policy "send messages as self" on public.messages for insert to authenticated with check(sender_id=auth.uid() and recipient_id<>auth.uid());
 drop policy if exists "recipient marks message read" on public.messages;
 create policy "recipient marks message read" on public.messages for update to authenticated using(recipient_id=auth.uid()) with check(recipient_id=auth.uid());
+
+
+-- Role-scoped recipient directory; exposes names and roles, never email addresses.
+create or replace function public.get_message_recipients()
+returns table(id uuid, full_name text, role public.app_role)
+language sql stable security definer set search_path = public as $
+ select p.id,p.full_name,p.role
+ from public.profiles p
+ where p.is_active and p.id <> auth.uid()
+ and (
+   public.is_management()
+   or p.role='management'
+   or exists(select 1 from public.class_sections cs join public.enrollments e on e.section_id=cs.id
+             where cs.teacher_id=auth.uid() and e.student_id=p.id and e.status='active')
+   or exists(select 1 from public.enrollments e join public.class_sections cs on cs.id=e.section_id
+             where e.student_id=auth.uid() and cs.teacher_id=p.id and e.status='active')
+ )
+ order by p.full_name
+$;
+grant execute on function public.get_message_recipients() to authenticated;
 
 -- Updated-at triggers
 do $$ declare t text; begin
