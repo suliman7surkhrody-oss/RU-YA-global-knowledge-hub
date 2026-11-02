@@ -386,6 +386,34 @@ do $$ declare t text; begin
 end $$;
 
 
+
+-- Uploaded object paths must be scoped to the authenticated owner and record.
+create or replace function public.validate_submission_file_path()
+returns trigger language plpgsql as $
+begin
+ if auth.uid() = new.student_id and new.file_path is not null and
+    new.file_path not like 'submissions/'||new.assignment_id::text||'/'||new.student_id::text||'/%' then
+   raise exception 'Submission files must belong to this learner and assignment.';
+ end if;
+ return new;
+end $;
+drop trigger if exists validate_submission_file_path on public.submissions;
+create trigger validate_submission_file_path before insert or update on public.submissions
+for each row execute procedure public.validate_submission_file_path();
+
+create or replace function public.validate_library_file_path()
+returns trigger language plpgsql as $
+begin
+ if new.storage_path is not null and
+    new.storage_path not like 'library/'||new.uploaded_by::text||'/%' then
+   raise exception 'Library files must be stored under the uploader''s private folder.';
+ end if;
+ return new;
+end $;
+drop trigger if exists validate_library_file_path on public.library_resources;
+create trigger validate_library_file_path before insert or update on public.library_resources
+for each row execute procedure public.validate_library_file_path();
+
 -- Private file storage: submission files and staff-managed library uploads.
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
 values(
