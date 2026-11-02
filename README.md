@@ -1,20 +1,21 @@
-# RU'YA Global Knowledge Hub — Preview
+# RU'YA Global Knowledge Hub
 
-This repository contains the first public-facing website preview for RU'YA Global Knowledge Hub.
+The RU'YA repository contains the public institutional website and the evolving role-based learning platform.
 
-## What is included
-- Responsive institutional landing page
-- Provisional text-based identity (official logo/branding pending approval)
-- Student, teacher and management portal entry points
-- Role-specific dashboard demonstration using sample data
+## Included
+- Responsive public institutional website.
+- Supabase email/password authentication client, account registration, email confirmation flow, password reset and sign-out.
+- Student, teacher and management workspaces with role-based navigation.
+- Live academic workflows for course catalogue, class sections, class-session scheduling, student enrollment, assignments, learner submissions, grading, attendance, learning resources, announcements and private messages.
+- PostgreSQL migration with row-level security, safe student-first account provisioning and a role-scoped messaging directory.
+- Production activation and security checklist in [docs/PRODUCTION_SETUP.md](docs/PRODUCTION_SETUP.md).
 
-## Important limitations
-This is a static front-end preview, not a production learning management system. The portal interaction is a demonstration only. It has no real authentication, database, user accounts, permissions, attendance records, assignment submission, messaging, or private file storage. Do not enter real credentials or real student information.
+## Deployment and activation
+The public website is hosted on GitHub Pages. Authentication and private academic records require an RU'YA-owned Supabase project. Apply [the database migration](supabase/migrations/202611020001_initial_platform.sql), configure [the browser project settings](js/supabase-config.js), and follow [the production setup guide](docs/PRODUCTION_SETUP.md).
 
-## Next development stages
-1. Confirm RU'YA brand and content authorization.
-2. Build secure authentication, database, role-based permissions and audit logging.
-3. Add courses, enrollments, schedules, attendance, assignments, grading and learning resources.
-4. Add notifications, video meeting integration, reporting, backups and security testing.
+## Security
+New public registrations are students only. Teacher and management permissions must be assigned by authorized management. Row-level security restricts data access by role and class assignment. Do not enter real student or staff information until the RU'YA-owned backend is configured, email delivery is secured, policies are reviewed and backups are enabled.
 
-The WordUp English learning platform remains a separate project; future integration should use a documented API rather than coupling the applications.
+Never place a Supabase service-role key, database password or other server secret in this repository or browser code. The anon/publishable key is designed for browser use only when row-level security is correctly configured.
+
+WordUp English remains a separate platform; any future integration should use an authenticated, documented API.
