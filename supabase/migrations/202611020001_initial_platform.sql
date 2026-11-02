@@ -385,5 +385,50 @@ do $$ declare t text; begin
  end loop;
 end $$;
 
--- NOTE: Create a private Storage bucket named "ruya-private" in Supabase.
--- Add Storage policies separately after the organization confirms its file access rules.
+
+-- Private file storage: submission files and staff-managed library uploads.
+insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+values(
+ 'ruya-private','ruya-private',false,26214400,
+ array['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+ 'application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+ 'application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation',
+ 'image/jpeg','image/png','audio/mpeg','audio/mp4','video/mp4','text/plain']
+)
+on conflict(id) do update set public=false,file_size_limit=26214400;
+
+drop policy if exists "RUYA private file read" on storage.objects;
+create policy "RUYA private file read" on storage.objects for select to authenticated
+using(bucket_id='ruya-private' and (
+ exists(select 1 from public.submissions sub
+   where sub.file_path=name and (
+    sub.student_id=auth.uid() or public.is_management() or
+    exists(select 1 from public.assignments a join public.class_sections cs on cs.id=a.section_id
+           where a.id=sub.assignment_id and cs.teacher_id=auth.uid())
+   ))
+ or exists(select 1 from public.library_resources lr where lr.storage_path=name)
+));
+
+drop policy if exists "RUYA submission upload" on storage.objects;
+create policy "RUYA submission upload" on storage.objects for insert to authenticated
+with check(bucket_id='ruya-private'
+ and (storage.foldername(name))[1]='submissions'
+ and (storage.foldername(name))[3]=auth.uid()::text
+ and exists(select 1 from public.assignments a join public.enrollments e on e.section_id=a.section_id
+            where a.id=((storage.foldername(name))[2])::uuid
+              and e.student_id=auth.uid() and e.status='active' and a.is_published));
+
+drop policy if exists "RUYA library upload" on storage.objects;
+create policy "RUYA library upload" on storage.objects for insert to authenticated
+with check(bucket_id='ruya-private'
+ and (storage.foldername(name))[1]='library'
+ and (storage.foldername(name))[2]=auth.uid()::text
+ and public.is_staff());
+
+drop policy if exists "RUYA private file delete" on storage.objects;
+create policy "RUYA private file delete" on storage.objects for delete to authenticated
+using(bucket_id='ruya-private' and (
+ public.is_management() or exists(select 1 from public.submissions sub
+   where sub.file_path=name and sub.student_id=auth.uid() and sub.score is null)
+));
+
