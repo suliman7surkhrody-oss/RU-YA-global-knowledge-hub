@@ -58,6 +58,16 @@ returns boolean language sql stable security definer set search_path = public as
   select exists(select 1 from public.profiles where id=auth.uid() and role in ('teacher','management') and is_active)
 $$;
 
+
+create or replace function public.is_active_member()
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists(select 1 from public.profiles where id=auth.uid() and is_active)
+$$;
+create or replace function public.is_teacher()
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists(select 1 from public.profiles where id=auth.uid() and role='teacher' and is_active)
+$$;
+
 create table if not exists public.academic_terms (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -222,10 +232,23 @@ alter table public.library_resources enable row level security;
 alter table public.announcements enable row level security;
 alter table public.messages enable row level security;
 
+
+-- Restrictive policies ensure a suspended account cannot bypass the UI and
+-- continue using an existing access token against the database or file store.
+do $ declare t text; begin
+ foreach t in array array['profiles','academic_terms','courses','class_sections','enrollments','class_sessions','attendance','assignments','submissions','library_resources','announcements','messages'] loop
+  execute format('drop policy if exists "active accounts only" on public.%I',t);
+  execute format('create policy "active accounts only" on public.%I as restrictive for all to authenticated using(public.is_active_member()) with check(public.is_active_member())',t);
+ end loop;
+end $$;
+drop policy if exists "RUYA active accounts only" on storage.objects;
+create policy "RUYA active accounts only" on storage.objects as restrictive for all to authenticated
+using(public.is_active_member()) with check(public.is_active_member());
+
 -- Profiles
 drop policy if exists "profiles read self staff" on public.profiles;
 create policy "profiles read self staff" on public.profiles for select to authenticated
-using(id=auth.uid() or public.is_management() or exists(select 1 from public.enrollments e join public.class_sections cs on cs.id=e.section_id where e.student_id=profiles.id and cs.teacher_id=auth.uid()));
+using(id=auth.uid() or public.is_management() or exists(select 1 from public.enrollments e join public.class_sections cs on cs.id=e.section_id where e.student_id=profiles.id and cs.public.is_teacher() and teacher_id=auth.uid()));
 drop policy if exists "profiles update self" on public.profiles;
 create policy "profiles update self" on public.profiles for update to authenticated
 using(id=auth.uid() or public.is_management())
@@ -302,7 +325,7 @@ returns table(id uuid, full_name text, role public.app_role)
 language sql stable security definer set search_path = public as $$
  select p.id,p.full_name,p.role
  from public.profiles p
- where p.is_active and p.id <> auth.uid()
+ where public.is_active_member() and p.is_active and p.id <> auth.uid()
  and (
    public.is_management()
    or p.role='management'
@@ -345,6 +368,9 @@ create policy "recipient marks message read" on public.messages for update to au
 create or replace function public.protect_submission_grade()
 returns trigger language plpgsql as $$
 begin
+ if new.score is not null and (new.score < 0 or new.score > (select a.max_score from public.assignments a where a.id=new.assignment_id)) then
+   raise exception 'The grade must be between zero and the assignment maximum.';
+ end if;
  if auth.uid() = old.student_id and (
    new.score is distinct from old.score or
    new.feedback is distinct from old.feedback or
