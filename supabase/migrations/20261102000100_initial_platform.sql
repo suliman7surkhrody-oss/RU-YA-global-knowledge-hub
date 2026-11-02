@@ -203,6 +203,11 @@ create index if not exists assignments_due_idx on public.assignments(due_at);
 create index if not exists submissions_student_idx on public.submissions(student_id);
 create index if not exists announcements_published_idx on public.announcements(published_at desc);
 
+-- API table privileges are broad only at the SQL privilege layer; RLS below is the data-access boundary.
+grant usage on schema public to authenticated;
+grant select,insert,update,delete on all tables in schema public to authenticated;
+grant usage,select on all sequences in schema public to authenticated;
+
 -- Keep privileged fields out of self-service profile updates.
 create or replace function public.protect_profile_privileges()
 returns trigger language plpgsql as $$
