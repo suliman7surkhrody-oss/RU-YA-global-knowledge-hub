@@ -198,6 +198,33 @@ h2{font-size:clamp(25px,2.5vw,32px);line-height:1.2}
  .portal-hero h2{font-size:20px}
 }
 
+
+/* Secure account and live application UI */
+[hidden]{display:none!important}
+.workspace-main>.workspace-topline{display:none}
+.account-label{text-align:right;line-height:1.3}.account-label b{display:block;font-size:11px;color:#405849}.account-label small{font-size:9px;color:#879187}
+#dashContent{padding-top:8px}
+.live-content{display:grid;gap:16px;margin-top:22px}
+.live-form{display:grid;gap:12px;background:#f7f6ef;border:1px solid #e3e1d6;padding:18px;border-radius:14px;margin-bottom:15px}
+.live-field{display:grid;gap:6px;color:#596b5e;font-size:12px;font-weight:700}
+.live-field input,.live-field select,.live-field textarea{width:100%;border:1px solid #d9ddd2;border-radius:9px;background:#fcfbf7;padding:11px;color:#33483c;font:400 13px "DM Sans",sans-serif}
+.live-field input:focus,.live-field textarea:focus,.live-field select:focus{outline:2px solid #c7d8c7;border-color:#78977b}
+.live-form .btn{justify-self:start}
+.live-record{padding:14px 0;border-top:1px solid #e8e7dd}
+.live-record h4{font:700 14px Manrope;color:#405849;margin:0 0 7px}
+.live-record p{font-size:13px;line-height:1.65;color:#68776d;margin:5px 0}
+.live-record small,.record-note{font-size:11px;color:#8a948b}
+.empty-state{font-size:13px;color:#8a948b;padding:14px 0}
+.error-copy,.auth-error{color:#a14f42;font-size:12px;line-height:1.5}
+.auth-error:empty{display:none}
+.text-action{border:0;background:none;color:#718b73;font-size:12px;padding:9px 0;cursor:pointer;text-align:left}
+.text-action:hover{text-decoration:underline}
+.check-field{display:flex;gap:8px;align-items:center;color:#637467;font-size:12px}
+.role-select{border:1px solid #dedfd5;border-radius:8px;background:#f8f6f0;padding:7px;color:#52695a;font-size:11px}
+.loading-line{padding:25px;color:#879187;font-size:13px}
+.workspace-stats{grid-template-columns:repeat(auto-fit,minmax(145px,1fr))}
+@media(max-width:700px){.live-form{padding:14px}.activity-row{flex-wrap:wrap}.account-label{display:none}.workspace-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 </style>
 </head>
 <body>
@@ -216,46 +243,17 @@ h2{font-size:clamp(25px,2.5vw,32px);line-height:1.2}
 <footer class="footer"><div><b>RU'YA GLOBAL KNOWLEDGE HUB</b><br><small>Learning today. Leading tomorrow.</small></div><div>© <span id="year"></span> RU'YA Global Knowledge Hub · Platform preview</div></footer>
 </div>
 <div class="dashboard" id="dashboard">
-<header class="dashbar luxe-bar"><div class="brand"><div class="mark">R</div><div class="brandname">RU'YA<small>GLOBAL KNOWLEDGE HUB</small></div></div><div class="dashbar-right"><span class="secure-label">● LEARNING ENVIRONMENT</span><span id="roleLabel" class="sub"></span><button class="avatar" aria-label="Profile">S</button><button class="btn btn-outline" onclick="logout()">Sign out</button></div></header>
+<header class="dashbar luxe-bar"><div class="brand"><div class="mark">R</div><div class="brandname">RU'YA<small>GLOBAL KNOWLEDGE HUB</small></div></div><div class="dashbar-right"><span class="secure-label">● LEARNING ENVIRONMENT</span><span id="roleLabel" class="sub"></span><span class="account-label"><b id="dashUserName">RU’YA member</b><small id="dashUserEmail"></small></span><button class="btn btn-outline" onclick="ruyaSignOut()">Sign out</button></div></header>
 <div class="workspace" id="workspace">
 <aside class="workspace-side"><div class="side-caption">YOUR WORKSPACE</div><div id="workspaceNav"></div><div class="side-bottom"><div class="support-mark">✦</div><b>Keep moving forward.</b><p>Your next step is always within reach.</p><span>RU'YA · LEARN WITH PURPOSE</span></div></aside>
 <main class="workspace-main"><div class="workspace-topline"><div><div class="crumb">RU'YA <span>/</span> <b id="crumbRole">STUDENT SPACE</b></div><div class="eyebrow" id="dashEyebrow">YOUR LEARNING JOURNEY</div><h1 id="welcome">A place to grow.</h1><p class="welcome-sub" id="welcomeSub">Everything you need to make meaningful progress, thoughtfully organised.</p></div><div class="date-chip"><span>✧</span><div><small>YOUR SPACE</small><b>Personal dashboard</b></div></div></div>
-<div id="dashContent"></div><p class="preview-note">PREVIEW ENVIRONMENT · Sample content only. Secure accounts, live records, submissions and institutional workflows will require backend integration.</p></main>
+<div id="dashContent"></div><p class="preview-note" id="previewNote">SECURE WORKSPACE · Connect your account to continue.</p></main>
 </div>
 </div>
-<div class="modal-wrap" id="loginModal"><div class="modal"><div class="brand" style="margin-bottom:22px"><div class="mark">R</div><div class="brandname">RU'YA<small>GLOBAL KNOWLEDGE HUB</small></div></div><h2>Welcome to your portal</h2><p>Sign in to continue to your RU'YA workspace.</p><div class="field"><label for="role">Portal</label><select id="role"><option value="student">Student</option><option value="teacher">Teacher</option><option value="management">Management</option></select></div><div class="field"><label for="email">Demo email address</label><input id="email" type="email" placeholder="demo@example.com" autocomplete="off"></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeLogin()">Cancel</button><button class="btn btn-green" onclick="demoLogin()">Continue →</button></div><p class="hint">Demonstration only. No password is requested, no credentials are collected, and no account is authenticated. Do not use this preview for real institutional work.</p></div></div>
+<div class="modal-wrap" id="loginModal"><div class="modal"><div class="brand" style="margin-bottom:22px"><div class="mark">R</div><div class="brandname">RU'YA<small>GLOBAL KNOWLEDGE HUB</small></div></div><h2 id="authModeTitle">Welcome back</h2><p>Use your RU’YA account to enter your secure workspace.</p><div id="authNameWrap" class="field" hidden><label for="authName">Full name</label><input id="authName" type="text" autocomplete="name" placeholder="Your full name"></div><div class="field"><label for="authEmail">Email address</label><input id="authEmail" type="email" placeholder="you@example.com" autocomplete="username"></div><div class="field"><label for="authPassword">Password</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="At least 8 characters"></div><p id="authError" class="auth-error" role="alert"></p><div class="modal-actions"><button class="btn btn-outline" onclick="ruyaCloseLogin()">Cancel</button><button class="btn btn-green" id="authSubmit" onclick="ruyaSignIn()">Sign in</button></div><button class="text-action" onclick="ruyaResetPassword()">Forgot password?</button><button class="text-action" id="authSwitch" onclick="ruyaAuthSwitch()">Create a student account</button><p class="hint">New registrations receive student access only. RU’YA management assigns teacher and management permissions after verifying staff identity.</p></div></div>
 <div class="toast" id="toast"></div>
-<script>
-const modal=document.getElementById('loginModal');
-function openLogin(role){modal.classList.add('show');if(role)document.getElementById('role').value=role}
-function closeLogin(){modal.classList.remove('show')}
-let activePortalRole='student';
-const portalMenus={student:[['Overview','⌂'],['My courses','▤'],['Class schedule','◷'],['Assignments','✎'],['Attendance','✓'],['Learning library','▧'],['Messages','✉'],['My achievements','✧']],teacher:[['Overview','⌂'],['My classes','▤'],['Teaching schedule','◷'],['Assignments & grading','✎'],['Attendance register','✓'],['Learning resources','▧'],['Student messages','✉'],['Class insights','▥']],management:[['Overview','⌂'],['Academic programs','▤'],['People & roles','♙'],['Timetables','◷'],['Academic records','▥'],['Resources','▧'],['Announcements','✉'],['Reports','⌁']]};
-function renderPortalPage(page){
-const role=activePortalRole, student=role==='student', teacher=role==='teacher';
-const names={student:'Student',teacher:'Teacher',management:'Management'};
-const data={
-student:{eyebrow:'YOUR LEARNING JOURNEY',title:'Welcome to your learning space.',sub:'Your courses, goals and next steps — thoughtfully brought together.',hero:'Your future is built one lesson at a time.',desc:'Stay curious, stay consistent, and make every learning session count.',pills:['4 active courses','Learning streak · 6 days','Next class · 8:00 PM'],stats:[['Active courses','04','You are making progress','▤'],['Learning hours','18.5','This month','◷'],['Tasks to complete','02','One due soon','✎'],['Attendance','96%','Excellent consistency','✓']],leftTitle:'Your next learning steps',rows:[['English Communication','Today · 8:00–9:30 PM','NEXT CLASS','◷'],['Speaking reflection · 5 minutes','Due tomorrow','ACTION NEEDED','✎'],['Academic Skills Workshop','Wednesday · 6:00 PM','UPCOMING','▤']],rightTitle:'Your learning progress'},
-teacher:{eyebrow:'YOUR TEACHING STUDIO',title:'Good teaching starts with clarity.',sub:'A focused command centre for your classes, learners and academic work.',hero:'Lead the room. Inspire the next generation.',desc:'Your teaching day, class activity and learner support — organised in one professional workspace.',pills:['3 active classes','8 sessions this week','14 items to review'],stats:[['Active classes','03','Across your timetable','▤'],['Learners','86','Across assigned classes','♙'],['To review','14','Submissions awaiting feedback','✎'],['Attendance','92%','Average class attendance','✓']],leftTitle:'Your teaching schedule',rows:[['Advanced English · Evening','Today · 8:00–9:30 PM','NEXT SESSION','◷'],['Review speaking submissions','14 learner recordings','TO REVIEW','✎'],['Class discussion · Thursday','Prepare discussion prompts','PLANNED','▤']],rightTitle:'Classroom pulse'},
-management:{eyebrow:'INSTITUTION OVERVIEW',title:'A clearer view of academic operations.',sub:'A high-level view of programmes, people and institutional activity.',hero:'Bring the whole learning community into focus.',desc:'A unified overview for academic coordination and institutional leadership.',pills:['128 learner records · demo','12 teaching groups · demo','18 pending items · demo'],stats:[['Learner records','128','Sample dashboard figure','♙'],['Teaching groups','12','Sample dashboard figure','▤'],['Pending reviews','18','Sample dashboard figure','✎'],['Engagement','94%','Sample dashboard figure','⌁']],leftTitle:'Institutional priorities',rows:[['Semester coordination','Review programme and class setup','IN PROGRESS','▤'],['Teacher allocation','Confirm teaching assignments','REVIEW','♙'],['Academic reporting','Prepare term overview','UPCOMING','▥']],rightTitle:'Operations overview'}
-}[role];
-document.getElementById('crumbRole').textContent=names[role].toUpperCase()+' SPACE';
-document.getElementById('dashEyebrow').textContent=data.eyebrow;
-document.getElementById('welcome').textContent=page==='Overview'?data.title:page;
-document.getElementById('welcomeSub').textContent=page==='Overview'?data.sub:'Your '+page.toLowerCase()+' area. Explore the tools and information organised for your role.';
-const nav=portalMenus[role].map(([label,ico])=>'<button class="workspace-nav '+(label===page?'active':'')+'" onclick="renderPortalPage('+JSON.stringify(label)+')"><span class="nav-ico">'+ico+'</span>'+label+'</button>').join('');
-document.getElementById('workspaceNav').innerHTML=nav;
-const hero=page==='Overview'?'<section class="portal-hero"><small>✦ &nbsp; '+data.eyebrow+'</small><h2>'+data.hero+'</h2><p>'+data.desc+'</p><div class="hero-pills">'+data.pills.map(x=>'<span class="hero-pill">'+x+'</span>').join('')+'</div></section>':'<section class="workspace-card"><h2 class="workspace-page-title">'+page+'</h2><p class="workspace-page-intro">This area is part of the RU\'YA portal experience. Live records and actions will be connected when the secure academic backend is implemented.</p><div class="activity-row"><div class="activity-icon">✦</div><div class="activity-copy"><b>'+page+' workspace</b><small>Designed for the '+names[role].toLowerCase()+' experience</small></div><span class="activity-tag">PREVIEW</span></div></section>';
-const stats=data.stats.map(x=>'<div class="workspace-stat"><div class="stat-top"><span>'+x[0]+'</span><span class="stat-icon">'+x[3]+'</span></div><strong>'+x[1]+'</strong><small>'+x[2]+'</small></div>').join('');
-const rows=data.rows.map(x=>'<div class="activity-row"><div class="activity-icon">'+x[3]+'</div><div class="activity-copy"><b>'+x[0]+'</b><small>'+x[1]+'</small></div><span class="activity-tag">'+x[2]+'</span></div>').join('');
-const quick=student?[['Open my courses','▤'],['Submit an assignment','✎'],['View my timetable','◷'],['Explore library','▧']]:teacher?[['Open class register','✓'],['Review submissions','✎'],['Prepare a lesson','▤'],['View timetable','◷']]:[['Review programmes','▤'],['Manage people','♙'],['View reports','▥'],['Academic calendar','◷']];
-const content=page==='Overview'?hero+'<div class="workspace-stats">'+stats+'</div><div class="workspace-columns"><section class="workspace-card"><div class="card-heading"><h3>'+data.leftTitle+'</h3><span>VIEW ALL ↗</span></div>'+rows+'</section><section class="workspace-card"><div class="card-heading"><h3>'+data.rightTitle+'</h3><span>THIS WEEK</span></div>'+(student?'<b style="font:800 27px Manrope;color:#173e5b">72%</b><div class="progress-line"><i style="width:72%"></i></div><div class="progress-label"><span>Overall course progress</span><b>On track</b></div>':'<div class="quick-grid">'+quick.map(x=>'<button class="quick-action" onclick="toast(\'This preview action will be enabled with the secure backend.\')"><span>'+x[1]+'</span>'+x[0]+'</button>').join('')+'</div>')+(student?'<div class="card-heading" style="margin-top:23px"><h3>Quick access</h3><span>YOUR TOOLS</span></div><div class="quick-grid">'+quick.map(x=>'<button class="quick-action" onclick="toast(\'This preview action will be enabled with the secure backend.\')"><span>'+x[1]+'</span>'+x[0]+'</button>').join('')+'</div>':'')+'</section></div>':'<section class="workspace-card"><div class="card-heading"><h3>'+page+'</h3><span>RU\'YA WORKSPACE</span></div><p class="workspace-page-intro">Your '+page.toLowerCase()+' information will appear here when the institutional system is connected.</p>'+rows+'</section>';
-document.getElementById('dashContent').innerHTML=content;
-}
-function demoLogin(){const role=document.getElementById('role').value;const email=document.getElementById('email').value.trim();if(!email||!email.includes('@')){toast('Please enter a demo email address.');return}closeLogin();activePortalRole=role;document.getElementById('publicSite').style.display='none';document.getElementById('dashboard').classList.add('show');const names={student:'Student',teacher:'Teacher',management:'Management'};document.getElementById('roleLabel').textContent=names[role]+' preview';renderPortalPage('Overview');window.scrollTo(0,0)}
-function logout(){document.getElementById('dashboard').classList.remove('show');document.getElementById('publicSite').style.display='block';document.getElementById('email').value='';window.scrollTo(0,0)}
-let toastTimer;function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3000)}
-document.getElementById('year').textContent=new Date().getFullYear();
-modal.addEventListener('click',e=>{if(e.target===modal)closeLogin()});
-</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/app.js"></script>
 </body></html>
