@@ -113,7 +113,7 @@ async function classes(){
   setTimeout(()=>bind("sessionForm",async f=>{const v=formData(f);const q=await db().from("class_sessions").insert({section_id:v.section_id,title:v.title,starts_at:new Date(v.starts_at).toISOString(),ends_at:new Date(v.ends_at).toISOString(),meeting_url:v.meeting_url||null});if(q.error)throw q.error;toast("Class session scheduled.");render(page)}),0);
  }
  const ses=await db().from("class_sessions").select("id,title,starts_at,meeting_url,class_sections(title,courses(title))").order("starts_at");if(ses.error)throw ses.error;
- const list=(ses.data||[]).map(x=>row(x.title+" · "+(x.class_sections?.courses?.title||x.class_sections?.title||""),date(x.starts_at),x.meeting_url?"MEETING LINK":"SESSION")).join("");
+ const list=(ses.data||[]).map(x=>'<div class="activity-row"><div class="activity-icon">◷</div><div class="activity-copy"><b>'+esc(x.title+" · "+(x.class_sections?.courses?.title||x.class_sections?.title||""))+'</b><small>'+esc(date(x.starts_at))+'</small></div>'+(x.meeting_url?'<a class="activity-tag" href="'+esc(x.meeting_url)+'" target="_blank" rel="noopener">JOIN CLASS ↗</a>':'<span class="activity-tag">SESSION</span>')+'</div>').join("");
  return form+panel("Classes and scheduled sessions",list||empty("No class sessions scheduled yet."));
 }
 async function assignments(){
