@@ -353,7 +353,7 @@ begin
    raise exception 'Only the assigned teaching team can grade submissions.';
  end if;
  return new;
-end $;
+end $$;
 drop trigger if exists protect_submission_grade on public.submissions;
 create trigger protect_submission_grade before update on public.submissions
 for each row execute procedure public.protect_submission_grade();
@@ -372,7 +372,7 @@ begin
    raise exception 'Message content cannot be changed by the recipient.';
  end if;
  return new;
-end $;
+end $$;
 drop trigger if exists protect_message_content on public.messages;
 create trigger protect_message_content before update on public.messages
 for each row execute procedure public.protect_message_content();
@@ -396,7 +396,7 @@ begin
    raise exception 'Submission files must belong to this learner and assignment.';
  end if;
  return new;
-end $;
+end $$;
 drop trigger if exists validate_submission_file_path on public.submissions;
 create trigger validate_submission_file_path before insert or update on public.submissions
 for each row execute procedure public.validate_submission_file_path();
@@ -409,7 +409,7 @@ begin
    raise exception 'Library files must be stored under the uploader''s private folder.';
  end if;
  return new;
-end $;
+end $$;
 drop trigger if exists validate_library_file_path on public.library_resources;
 create trigger validate_library_file_path before insert or update on public.library_resources
 for each row execute procedure public.validate_library_file_path();
