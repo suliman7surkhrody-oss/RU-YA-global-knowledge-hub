@@ -313,6 +313,7 @@ language sql stable security definer set search_path = public as $$
  )
  order by p.full_name
 $$;
+revoke all on function public.get_message_recipients() from public, anon;
 grant execute on function public.get_message_recipients() to authenticated;
 
 -- Library and communications
