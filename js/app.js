@@ -134,7 +134,19 @@ async function assignments(){
  setTimeout(()=>document.querySelectorAll(".gradeForm").forEach(f=>f.onsubmit=async e=>{e.preventDefault();const v=formData(f);const q=await db().from("submissions").update({score:Number(v.score),feedback:v.feedback,status:"graded",graded_by:user.id,graded_at:new Date().toISOString()}).eq("id",f.dataset.id);if(q.error)toast(q.error.message);else{toast("Grade saved.");render(page)}}),0);
  return form+panel("Assignments",(r.data||[]).map(x=>row(x.title,"Due "+date(x.due_at),x.is_published?"PUBLISHED":"DRAFT")).join("")||empty("No assignments created."))+grading;
 }
-async function attendance(){const r=await db().from("attendance").select("status,marked_at,class_sessions(title,starts_at)").order("marked_at",{ascending:false}).limit(100);if(r.error)throw r.error;return panel("Attendance records",(r.data||[]).map(x=>row(x.class_sessions?.title||"Class session",date(x.class_sessions?.starts_at||x.marked_at),nice(x.status))).join("")||empty("No attendance records yet."))}
+async function attendance(){
+ const r=await db().from("attendance").select("status,marked_at,class_sessions(title,starts_at)").order("marked_at",{ascending:false}).limit(100);if(r.error)throw r.error;
+ let form="";
+ if(profile.role!=="student"){
+  const [ss,ee]=await Promise.all([db().from("class_sessions").select("id,title,section_id,starts_at").order("starts_at",{ascending:false}),db().from("enrollments").select("section_id,student_id,profiles(full_name,email)").eq("status","active")]);
+  if(ss.error)throw ss.error;if(ee.error)throw ee.error;
+  const opts=[];
+  ss.data.forEach(s=>ee.data.filter(e=>e.section_id===s.section_id).forEach(e=>opts.push('<option value="'+s.id+':'+e.student_id+'">'+esc(e.profiles?.full_name||e.profiles?.email||"Learner")+' · '+esc(s.title)+' · '+esc(date(s.starts_at))+'</option>')));
+  form=opts.length?'<form class="live-form" id="attendanceForm"><label class="live-field">Learner and class session<select name="pair">'+opts.join("")+'</select></label><label class="live-field">Attendance status<select name="status"><option value="present">Present</option><option value="late">Late</option><option value="absent">Absent</option><option value="excused">Excused</option></select></label><button class="btn btn-green">Save attendance</button></form>':empty("Create a class session and enroll learners before taking attendance.");
+  setTimeout(()=>bind("attendanceForm",async f=>{const v=formData(f),parts=v.pair.split(":");const q=await db().from("attendance").upsert({session_id:parts[0],student_id:parts[1],status:v.status,marked_by:user.id},{onConflict:"session_id,student_id"});if(q.error)throw q.error;toast("Attendance saved.");render(page)}),0);
+ }
+ return form+panel("Attendance records",(r.data||[]).map(x=>row(x.class_sessions?.title||"Class session",date(x.class_sessions?.starts_at||x.marked_at),nice(x.status))).join("")||empty("No attendance records yet."));
+}
 async function library(){
  const r=await db().from("library_resources").select("*").order("created_at",{ascending:false});if(r.error)throw r.error;
  let form=profile.role!=="student"?'<form class="live-form" id="resourceForm">'+field("Resource title","title")+field("Category","category")+'<label class="live-field">Description<textarea name="description"></textarea></label>'+field("External URL","external_url","url")+'<label class="live-field">Visibility<select name="visibility"><option value="authenticated">All signed-in users</option><option value="staff">Staff only</option><option value="public">Public</option></select></label><button class="btn btn-green">Add resource</button></form>':"";
@@ -142,8 +154,11 @@ async function library(){
  return form+panel("Learning library",(r.data||[]).map(x=>row(x.title,x.category+" · "+x.description,x.external_url?"OPEN ↗":x.visibility)).join("")||empty("The library is waiting for its first resources."));
 }
 async function people(){
- const r=await db().from("profiles").select("id,email,full_name,role,is_active").order("created_at",{ascending:false});if(r.error)throw r.error;
- return panel("User directory",(r.data||[]).map(x=>'<div class="activity-row"><div class="activity-copy"><b>'+esc(x.full_name||"New member")+'</b><small>'+esc(x.email)+'</small></div><select class="role-select" data-role-id="'+x.id+'"><option value="student" '+(x.role==="student"?"selected":"")+'>Student</option><option value="teacher" '+(x.role==="teacher"?"selected":"")+'>Teacher</option><option value="management" '+(x.role==="management"?"selected":"")+'>Management</option></select><button class="btn btn-outline" data-active-id="'+x.id+'" data-active="'+x.is_active+'">'+(x.is_active?"Active":"Inactive")+'</button></div>').join("")||empty("No users yet."));
+ const [r,s]=await Promise.all([db().from("profiles").select("id,email,full_name,role,is_active").order("created_at",{ascending:false}),db().from("class_sections").select("id,title,courses(title)")]);if(r.error)throw r.error;if(s.error)throw s.error;
+ const students=r.data.filter(x=>x.role==="student"&&x.is_active);
+ const form='<form class="live-form" id="enrollmentForm"><label class="live-field">Student<select name="student_id">'+students.map(x=>'<option value="'+x.id+'">'+esc(x.full_name||x.email)+'</option>').join("")+'</select></label><label class="live-field">Class section<select name="section_id">'+s.data.map(x=>'<option value="'+x.id+'">'+esc(x.courses?.title||x.title)+' · '+esc(x.title)+'</option>').join("")+'</select></label><button class="btn btn-green">Enroll student</button></form>';
+ setTimeout(()=>bind("enrollmentForm",async f=>{const v=formData(f);const q=await db().from("enrollments").insert({student_id:v.student_id,section_id:v.section_id,status:"active"});if(q.error)throw q.error;toast("Student enrolled.");render(page)}),0);
+ return form+panel("User directory",(r.data||[]).map(x=>'<div class="activity-row"><div class="activity-copy"><b>'+esc(x.full_name||"New member")+'</b><small>'+esc(x.email)+'</small></div><select class="role-select" data-role-id="'+x.id+'"><option value="student" '+(x.role==="student"?"selected":"")+'>Student</option><option value="teacher" '+(x.role==="teacher"?"selected":"")+'>Teacher</option><option value="management" '+(x.role==="management"?"selected":"")+'>Management</option></select><button class="btn btn-outline" data-active-id="'+x.id+'" data-active="'+x.is_active+'">'+(x.is_active?"Active":"Inactive")+'</button></div>').join("")||empty("No users yet."));
 }
 async function announcements(){
  const r=await db().from("announcements").select("*").order("created_at",{ascending:false});if(r.error)throw r.error;
