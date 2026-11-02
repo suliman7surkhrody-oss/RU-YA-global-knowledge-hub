@@ -296,6 +296,25 @@ create policy "staff grade submissions" on public.submissions for update to auth
 using(public.is_management() or exists(select 1 from public.assignments a join public.class_sections s on s.id=a.section_id where a.id=assignment_id and s.teacher_id=auth.uid()))
 with check(public.is_management() or exists(select 1 from public.assignments a join public.class_sections s on s.id=a.section_id where a.id=assignment_id and s.teacher_id=auth.uid()));
 
+-- Role-scoped recipient directory; exposes names and roles, never email addresses.
+create or replace function public.get_message_recipients()
+returns table(id uuid, full_name text, role public.app_role)
+language sql stable security definer set search_path = public as $
+ select p.id,p.full_name,p.role
+ from public.profiles p
+ where p.is_active and p.id <> auth.uid()
+ and (
+   public.is_management()
+   or p.role='management'
+   or exists(select 1 from public.class_sections cs join public.enrollments e on e.section_id=cs.id
+             where cs.teacher_id=auth.uid() and e.student_id=p.id and e.status='active')
+   or exists(select 1 from public.enrollments e join public.class_sections cs on cs.id=e.section_id
+             where e.student_id=auth.uid() and cs.teacher_id=p.id and e.status='active')
+ )
+ order by p.full_name
+$;
+grant execute on function public.get_message_recipients() to authenticated;
+
 -- Library and communications
 drop policy if exists "library access by visibility" on public.library_resources;
 create policy "library access by visibility" on public.library_resources for select to authenticated
@@ -318,24 +337,7 @@ drop policy if exists "recipient marks message read" on public.messages;
 create policy "recipient marks message read" on public.messages for update to authenticated using(recipient_id=auth.uid()) with check(recipient_id=auth.uid());
 
 
--- Role-scoped recipient directory; exposes names and roles, never email addresses.
-create or replace function public.get_message_recipients()
-returns table(id uuid, full_name text, role public.app_role)
-language sql stable security definer set search_path = public as $
- select p.id,p.full_name,p.role
- from public.profiles p
- where p.is_active and p.id <> auth.uid()
- and (
-   public.is_management()
-   or p.role='management'
-   or exists(select 1 from public.class_sections cs join public.enrollments e on e.section_id=cs.id
-             where cs.teacher_id=auth.uid() and e.student_id=p.id and e.status='active')
-   or exists(select 1 from public.enrollments e join public.class_sections cs on cs.id=e.section_id
-             where e.student_id=auth.uid() and cs.teacher_id=p.id and e.status='active')
- )
- order by p.full_name
-$;
-grant execute on function public.get_message_recipients() to authenticated;
+
 
 
 -- Learners cannot forge grades or feedback by editing their own submission.
