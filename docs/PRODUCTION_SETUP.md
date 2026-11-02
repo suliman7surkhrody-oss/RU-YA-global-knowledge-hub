@@ -9,7 +9,7 @@ The repository now contains the first production backend foundation. The public 
 3. In **SQL Editor**, run `supabase/migrations/202611020001_initial_platform.sql`.
 4. In **Project Settings → API**, copy the Project URL and anon/publishable key.
 5. Put those two public values in `js/supabase-config.js`. Never use the service-role key in the browser or commit it to Git.
-6. Create a **private** Storage bucket named `ruya-private`. Keep uploads private and use signed URLs; define file policies before uploading real student records.
+6. The migration creates the **private** `ruya-private` Storage bucket and role-scoped policies for learner submissions and staff library uploads. Verify these policies in Supabase Storage before uploading real student records.
 7. Add the deployed GitHub Pages URL to Supabase **Authentication → URL Configuration → Site URL** and allowed redirect URLs.
 
 ## 2. First management account
@@ -59,7 +59,7 @@ Management can then assign teacher roles and activate staff accounts. Do not sha
 | Courses, sections, enrollments, sessions | Live portal workflows implemented; requires database activation |
 | Attendance, assignments, submissions, grading | Live portal workflows implemented; requires database activation and end-to-end testing |
 | Library, announcements, messages | Live portal workflows implemented; requires database activation and end-to-end testing |
-| Private file uploads | Not implemented in the portal yet; bucket and access policies require setup |
+| Private file uploads | Assignment and library uploads with short-lived signed downloads; verify storage policies and file limits before launch |
 | Production launch | Not approved until security, legal, data and operational checks are complete |
 
 GitHub Pages is a static host. It must not be treated as a trusted server or used to store secrets. The Supabase database policies are the security boundary for browser requests.
