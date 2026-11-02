@@ -313,7 +313,7 @@ create policy "management manage announcements" on public.announcements for all 
 drop policy if exists "messages visible to participants" on public.messages;
 create policy "messages visible to participants" on public.messages for select to authenticated using(sender_id=auth.uid() or recipient_id=auth.uid() or public.is_management());
 drop policy if exists "send messages as self" on public.messages;
-create policy "send messages as self" on public.messages for insert to authenticated with check(sender_id=auth.uid() and recipient_id<>auth.uid());
+create policy "send messages as self" on public.messages for insert to authenticated with check(sender_id=auth.uid() and recipient_id<>auth.uid() and exists(select 1 from public.get_message_recipients() r where r.id=recipient_id));
 drop policy if exists "recipient marks message read" on public.messages;
 create policy "recipient marks message read" on public.messages for update to authenticated using(recipient_id=auth.uid()) with check(recipient_id=auth.uid());
 
@@ -336,6 +336,44 @@ language sql stable security definer set search_path = public as $
  order by p.full_name
 $;
 grant execute on function public.get_message_recipients() to authenticated;
+
+
+-- Learners cannot forge grades or feedback by editing their own submission.
+create or replace function public.protect_submission_grade()
+returns trigger language plpgsql as $
+begin
+ if auth.uid() = old.student_id and (
+   new.score is distinct from old.score or
+   new.feedback is distinct from old.feedback or
+   new.graded_by is distinct from old.graded_by or
+   new.graded_at is distinct from old.graded_at
+ ) then
+   raise exception 'Only the assigned teaching team can grade submissions.';
+ end if;
+ return new;
+end $;
+drop trigger if exists protect_submission_grade on public.submissions;
+create trigger protect_submission_grade before update on public.submissions
+for each row execute procedure public.protect_submission_grade();
+
+-- Message recipients may mark a message read, but cannot rewrite its contents.
+create or replace function public.protect_message_content()
+returns trigger language plpgsql as $
+begin
+ if auth.uid() = old.recipient_id and (
+   new.sender_id is distinct from old.sender_id or
+   new.recipient_id is distinct from old.recipient_id or
+   new.subject is distinct from old.subject or
+   new.body is distinct from old.body or
+   new.created_at is distinct from old.created_at
+ ) then
+   raise exception 'Message content cannot be changed by the recipient.';
+ end if;
+ return new;
+end $;
+drop trigger if exists protect_message_content on public.messages;
+create trigger protect_message_content before update on public.messages
+for each row execute procedure public.protect_message_content();
 
 -- Updated-at triggers
 do $$ declare t text; begin
