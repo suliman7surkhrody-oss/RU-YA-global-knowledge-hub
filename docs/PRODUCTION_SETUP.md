@@ -55,11 +55,11 @@ Management can then assign teacher roles and activate staff accounts. Do not sha
 | Public website and responsive design | Live preview |
 | Database schema and row-level security | Migration prepared; must be applied to RU'YA's Supabase project |
 | Browser authentication client | Ready for project URL/key |
-| Real user accounts | Requires Supabase project activation and email configuration |
-| Courses, sections, enrollments, sessions | Schema prepared |
-| Attendance, assignments, submissions, grading | Schema prepared; application screens/API integration still in progress |
-| Library, announcements, messages | Schema prepared; application screens/API integration still in progress |
-| Private file uploads | Bucket and access policies still require setup |
+| Real user accounts | Authentication UI is implemented; requires Supabase project activation and email configuration |
+| Courses, sections, enrollments, sessions | Live portal workflows implemented; requires database activation |
+| Attendance, assignments, submissions, grading | Live portal workflows implemented; requires database activation and end-to-end testing |
+| Library, announcements, messages | Live portal workflows implemented; requires database activation and end-to-end testing |
+| Private file uploads | Not implemented in the portal yet; bucket and access policies require setup |
 | Production launch | Not approved until security, legal, data and operational checks are complete |
 
 GitHub Pages is a static host. It must not be treated as a trusted server or used to store secrets. The Supabase database policies are the security boundary for browser requests.
