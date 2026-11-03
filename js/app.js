@@ -6,16 +6,24 @@ const nice=s=>String(s||"").replace(/[_-]/g," ").replace(/\b\w/g,c=>c.toUpperCas
 let user=null,profile=null,page="Overview";
 const menus={student:["Overview","My courses","Class schedule","Assignments","Attendance","Learning library","Announcements","Messages"],teacher:["Overview","My classes","Teaching schedule","Assignments & grading","Attendance register","Learning resources","Announcements","Messages"],management:["Overview","Academic programs","People & roles","Timetables","Academic records","Learning library","Announcements","Messages"]};
 function toast(s){const e=$("toast");e.textContent=s;e.classList.add("show");setTimeout(()=>e.classList.remove("show"),3200)}
-let authSignup=false,authReturnFocus=null;
+let authSignup=false,authReturnFocus=null,recoveryMode=false,pendingPage=null;
 function close(){ $("loginModal").classList.remove("show");$("authPassword").value="";$("authError").textContent="";if(authReturnFocus&&typeof authReturnFocus.focus==="function")authReturnFocus.focus(); }
 function authErrorMessage(e){const m=String(e&&e.message||"").toLowerCase();if(m.includes("invalid login credentials"))return "The email address or password is incorrect. Check both and try again.";if(m.includes("email not confirmed"))return "Please confirm your email address using the link sent to your inbox.";if(m.includes("user already registered"))return "An account with this email already exists. Please sign in instead.";if(m.includes("password should be at least"))return "For a new account, choose a password with at least 8 characters.";return e&&e.message?e.message:"Authentication failed. Please try again.";}
-function mode(m){authSignup=m==="signup";$("authNameWrap").hidden=!authSignup;$("authName").required=authSignup;$("authPassword").autocomplete=authSignup?"new-password":"current-password";$("authPassword").minLength=authSignup?8:1;$("authPassword").placeholder=authSignup?"At least 8 characters":"Your password";$("authModeTitle").textContent=authSignup?"Create your student account":"Welcome back";$("authSubmit").textContent=authSignup?"Create account":"Sign in";$("authSwitch").textContent=authSignup?"Already registered? Sign in":"Create a student account";$("authSwitch").dataset.mode=authSignup?"signin":"signup";$("authSwitch").onclick=()=>mode(authSignup?"signin":"signup");$("authError").textContent="";}
-function openLogin(){authReturnFocus=document.activeElement;$("loginModal").classList.add("show");mode("signin");setTimeout(()=>$("authEmail").focus(),50)}
-function openLogin(){ $("loginModal").classList.add("show");mode("signin") }
+function mode(m){authSignup=m==="signup";recoveryMode=m==="recovery";$("authNameWrap").hidden=!authSignup;$("authName").required=authSignup;$("authPassword").autocomplete=authSignup||recoveryMode?"new-password":"current-password";$("authPassword").minLength=authSignup||recoveryMode?8:1;$("authPassword").placeholder=authSignup||recoveryMode?"At least 8 characters":"Your password";$("authModeTitle").textContent=recoveryMode?"Choose a new password":authSignup?"Create your student account":"Welcome back";$("authSubmit").textContent=recoveryMode?"Update password":authSignup?"Create account":"Sign in";$("authSwitch").hidden=recoveryMode;$("forgotPassword").hidden=recoveryMode;$("authHint").textContent=recoveryMode?"Choose a new password for your RU’YA account.":"New registrations receive student access only. RU’YA management assigns teacher and management permissions after verifying staff identity.";$("authSwitch").textContent=authSignup?"Already registered? Sign in":"Create a student account";$("authSwitch").dataset.mode=authSignup?"signin":"signup";$("authSwitch").onclick=()=>mode(authSignup?"signin":"signup");$("authError").textContent="";}
+function openLogin(initialMode){authReturnFocus=document.activeElement;$("loginModal").classList.add("show");mode(initialMode==="signup"?"signup":"signin");setTimeout(()=>$("authEmail").focus(),50)}
 async function signin(){return authenticate(false)}
 async function signupAction(){return authenticate(true)}
 async function authenticate(signup){
- if(!db())return $("authError").textContent="Backend setup is not complete. Please see the production setup guide.";
+ if(!db())return $("authError").textContent="RU’YA account services are not connected yet. Registration and sign-in will become available after the organisation activates its secure account system.";
+ if(recoveryMode){
+  const password=$("authPassword").value;
+  if(password.length<8)return $("authError").textContent="Choose a password with at least 8 characters.";
+  $("authSubmit").disabled=true;$("authError").textContent="";
+  try{const r=await db().auth.updateUser({password});if(r.error)throw r.error;await db().auth.signOut();$("authEmail").value="";$("authPassword").value="";mode("signin");$("authError").textContent="Your password has been updated. You can now sign in with your new password."}
+  catch(e){$("authError").textContent=authErrorMessage(e)}
+  finally{$("authSubmit").disabled=false}
+  return;
+ }
  const email=$("authEmail").value.trim(),password=$("authPassword").value;
  if(!email||!password)return $("authError").textContent="Enter your email address and password.";if(signup&&password.length<8)return $("authError").textContent="For a new account, use a password with at least 8 characters.";
  $("authSubmit").disabled=true;$("authError").textContent="";
@@ -29,13 +37,13 @@ async function authenticate(signup){
  }catch(e){$("authError").textContent=authErrorMessage(e)}
  finally{$("authSubmit").disabled=false}
 }
-async function resetPassword(){const email=$("authEmail").value.trim();if(!db()){$("authError").textContent="Secure account access is not connected yet. Please see the setup guide.";return}if(!email){$("authError").textContent="Enter your account email address first."; $("authEmail").focus();return}const r=await db().auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});$("authError").textContent=r.error?r.error.message:"If an account exists for this address, password-reset instructions have been sent."}
+async function resetPassword(){const email=$("authEmail").value.trim();if(!db()){$("authError").textContent="Password recovery is currently unavailable because RU’YA has not connected its secure account service. Please contact the organisation’s administrator.";return}if(!email){$("authError").textContent="Enter your account email address first."; $("authEmail").focus();return}const redirectTo=location.origin+location.pathname+"?auth=recovery";const r=await db().auth.resetPasswordForEmail(email,{redirectTo});$("authError").textContent=r.error?"We could not send the reset email: "+r.error.message:"If an account exists for this address, password-reset instructions have been sent. Check your inbox and spam folder.";}
 async function loadProfile(u){
  const r=await db().from("profiles").select("*").eq("id",u.id).single();if(r.error)throw r.error;
  if(!r.data.is_active){await db().auth.signOut();throw Error("This account is inactive. Contact RU’YA management.")}
  user=u;profile=r.data;$("publicSite").style.display="none";$("dashboard").classList.add("show");
  $("roleLabel").textContent=nice(profile.role)+" workspace";$("dashUserName").textContent=profile.full_name||u.email;$("dashUserEmail").textContent=u.email;
- $("previewNote").textContent="SECURE WORKSPACE · "+u.email;await render("Overview");window.scrollTo(0,0)
+ $("previewNote").textContent="SECURE WORKSPACE · "+u.email;const destination=pendingPage||"Overview";pendingPage=null;await render(destination);window.scrollTo(0,0)
 }
 function nav(){ $("workspaceNav").innerHTML=(menus[profile.role]||[]).map(n=>'<button class="workspace-nav '+(page===n?"active":"")+'" onclick="ruyaNavigate(\''+n.replace(/'/g,"\\'")+'\')"><span class="nav-ico">◆</span>'+esc(n)+'</button>').join("")}
 function shell(title,desc,body){return '<div class="workspace-topline"><div class="eyebrow">RU’YA · '+esc(nice(profile.role))+' WORKSPACE</div><h1>'+esc(title)+'</h1><p class="welcome-sub">'+esc(desc)+'</p></div><div class="live-content">'+body+'</div>'}
@@ -193,11 +201,11 @@ document.addEventListener("click",async e=>{
  const a=e.target.closest("[data-active-id]");if(a){const q=await db().from("profiles").update({is_active:a.dataset.active!=="true"}).eq("id",a.dataset.activeId);if(q.error)toast(q.error.message);else render(page)}
 });
 async function signOut(){if(db())await db().auth.signOut();$("authPassword").value="";user=null;profile=null;$("dashboard").classList.remove("show");$("publicSite").style.display="block";window.scrollTo(0,0)}
-window.ruyaNavigate=render;window.ruyaSignIn=signin;window.ruyaSignUp=signupAction;window.ruyaAuthSubmit=()=>authenticate(authSignup);window.ruyaShowLogin=openLogin;window.ruyaCloseLogin=close;window.ruyaSignOut=signOut;window.ruyaResetPassword=resetPassword;window.ruyaAuthSwitch=()=>mode($("authSwitch").dataset.mode||"signup");
+window.ruyaNavigate=render;window.ruyaSignIn=signin;window.ruyaSignUp=signupAction;window.ruyaAuthSubmit=()=>authenticate(authSignup);window.ruyaShowLogin=openLogin;window.ruyaOpenLibrary=()=>{pendingPage="Learning library";openLogin("signin");if(!db())$("authError").textContent="The learning library is part of the secure learner workspace. It will open here once RU’YA activates account services.";else $("authError").textContent="Sign in to open the RU’YA learning library.";};window.ruyaCloseLogin=close;window.ruyaSignOut=signOut;window.ruyaResetPassword=resetPassword;window.ruyaAuthSwitch=()=>mode($("authSwitch").dataset.mode||"signup");
 document.addEventListener("DOMContentLoaded",async()=>{
  $("year").textContent=new Date().getFullYear();$("loginModal").addEventListener("click",e=>{if(e.target===$("loginModal"))close()});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("loginModal").classList.contains("show"))close()});
- const status=$("backendStatus"),guide=$("backendGuide");if(!db()){if(status)status.innerHTML='Secure account access is being prepared. Portal sign-in will become available when RU’YA connects its verified account service. <a href="https://github.com/suliman7surkhrody-oss/RU-YA-global-knowledge-hub/blob/main/docs/PRODUCTION_SETUP.md" target="_blank" rel="noopener">View setup guide ↗</a>';$("authSubmit").disabled=true;return}else{if(status)status.textContent="Secure account service connected. Sign in with your RU’YA email and password.";if(guide)guide.hidden=true;$("authSubmit").disabled=false}
+ const status=$("backendStatus");if(!db()){if(status)status.textContent="Account services are not connected yet. You can explore the public website, but account creation, sign-in and password recovery are temporarily unavailable.";$("authSubmit").disabled=true;$("authSwitch").disabled=true;$("forgotPassword").disabled=true;$("authSubmit").title="Waiting for RU’YA account service activation";$("authSwitch").title=$("forgotPassword").title="Waiting for RU’YA account service activation";return}else{if(status)status.textContent="Secure account service connected. Use your RU’YA email and password.";$("authSubmit").disabled=false;$("authSwitch").disabled=false;$("forgotPassword").disabled=false}
  const r=await db().auth.getSession();if(r.data.session){try{await loadProfile(r.data.session.user)}catch(e){await db().auth.signOut();user=null;profile=null;$("dashboard").classList.remove("show");$("publicSite").style.display="block";toast("We could not open your RU’YA profile. Please sign in again or contact management.")}}
- db().auth.onAuthStateChange((event)=>{if(event==="SIGNED_OUT"){user=null;profile=null;$("dashboard").classList.remove("show");$("publicSite").style.display="block"}});
+ db().auth.onAuthStateChange((event)=>{if(event==="PASSWORD_RECOVERY"){openLogin("recovery");$("authError").textContent="";}if(event==="SIGNED_OUT"){user=null;profile=null;$("dashboard").classList.remove("show");$("publicSite").style.display="block"}});
 });
 })();
