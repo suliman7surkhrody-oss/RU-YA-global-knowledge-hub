@@ -37,14 +37,14 @@ language sql
 stable
 security definer
 set search_path = pg_catalog, public, auth
-as $
+as $function$
   select exists (
     select 1 from public.enrollments e
     where e.section_id = _section_id
       and e.student_id = (select auth.uid())
       and e.status = 'active'
   );
-$;
+$function$;
 revoke all on function private.is_enrolled_in_section(uuid) from public, anon;
 grant execute on function private.is_enrolled_in_section(uuid) to authenticated;
 
