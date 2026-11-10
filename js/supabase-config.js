@@ -1,7 +1,7 @@
-/* Public Supabase project settings.
-   Replace the placeholders after creating the RU'YA Supabase project.
-   The anon/publishable key is intended for browser use; never put a service-role key here. */
+/* RU'YA Demo Supabase public settings.
+   This publishable key is safe for browser use with the database's RLS policies.
+   Never place a service-role key in this file. */
 window.RUYA_SUPABASE_CONFIG = {
-  url: "https://YOUR-PROJECT.supabase.co",
-  anonKey: "YOUR_SUPABASE_ANON_OR_PUBLISHABLE_KEY"
+  url: "https://kmqmbpoxadhvrqbwzgud.supabase.co",
+  anonKey: "sb_publishable_gRwgN3y16BCvBH06OvO06A_Eyg2CpG0"
 };
