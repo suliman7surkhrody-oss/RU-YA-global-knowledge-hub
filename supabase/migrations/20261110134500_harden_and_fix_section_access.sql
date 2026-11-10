@@ -24,20 +24,38 @@ grant execute on function public.is_staff() to authenticated;
 grant execute on function public.is_teacher() to authenticated;
 grant execute on function public.get_message_recipients() to authenticated;
 
--- Correct the student-to-section relationship. The original predicate
--- accidentally compared enrollments.section_id with enrollments.id.
+-- A private SECURITY DEFINER helper prevents an RLS recursion cycle
+-- between class_sections and enrollments. It is not exposed through the Data API
+-- and is callable only by authenticated users; auth.uid() scopes every lookup.
+create schema if not exists private;
+revoke all on schema private from public;
+grant usage on schema private to authenticated;
+
+create or replace function private.is_enrolled_in_section(_section_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = pg_catalog, public, auth
+as $
+  select exists (
+    select 1 from public.enrollments e
+    where e.section_id = _section_id
+      and e.student_id = (select auth.uid())
+      and e.status = 'active'
+  );
+$;
+revoke all on function private.is_enrolled_in_section(uuid) from public, anon;
+grant execute on function private.is_enrolled_in_section(uuid) to authenticated;
+
+-- Correct the student-to-section relationship and avoid recursive RLS reads.
 drop policy if exists "sections visible to enrolled or staff" on public.class_sections;
 create policy "sections visible to enrolled or staff" on public.class_sections
 for select to authenticated
 using (
   (select public.is_management())
   or ((select public.is_teacher()) and teacher_id=(select auth.uid()))
-  or exists (
-    select 1 from public.enrollments e
-    where e.section_id=class_sections.id
-      and e.student_id=(select auth.uid())
-      and e.status='active'
-  )
+  or (select private.is_enrolled_in_section(class_sections.id))
 );
 
 -- Evaluate account status once per statement, not once per row.
