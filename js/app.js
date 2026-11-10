@@ -29,7 +29,7 @@ async function authenticate(signup){
  $("authSubmit").disabled=true;$("authError").textContent="";
  try{
   let result;
-  if(signup){const name=$("authName").value.trim();if(!name)throw Error("Enter your full name.");result=await db().auth.signUp({email,password,options:{data:{full_name:name}}});}
+  if(signup){const name=$("authName").value.trim();if(!name)throw Error("Enter your full name.");result=await db().auth.signUp({email,password,options:{data:{full_name:name},emailRedirectTo:location.origin+location.pathname}});}
   else result=await db().auth.signInWithPassword({email,password});
   if(result.error)throw result.error;
   if(result.data.session){try{await loadProfile(result.data.user);close()}catch(profileError){await db().auth.signOut();user=null;profile=null;$("dashboard").classList.remove("show");$("publicSite").style.display="block";throw new Error("Your account was authenticated, but its RU’YA profile could not be opened. Please contact management or try again. "+(profileError.message||""))}}
