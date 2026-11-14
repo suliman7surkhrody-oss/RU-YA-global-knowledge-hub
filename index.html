@@ -710,6 +710,47 @@ body[data-theme="dark"] .catalog-card p,body[data-theme="dark"] .course-lesson p
 body[data-theme="dark"] .library-tools input,body[data-theme="dark"] .library-tools select{background:#14202d;color:#e7edf4;border-color:#34485d}
 @media(max-width:650px){.library-tools{grid-template-columns:1fr}.library-resource-card{align-items:flex-start;flex-wrap:wrap}.library-resource-action{margin-left:48px}.catalog-grid{grid-template-columns:1fr}}
 
+
+/* AUREVIA course, library, payment and attendance refinements */
+.course-detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:22px 0}
+.course-detail-card{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:18px;margin:12px 0}
+.course-detail-card>small{display:block;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.12em}
+.course-detail-card>strong{display:block;font:800 20px Manrope;color:var(--forest);margin:8px 0}
+.course-detail-card h3{font:700 15px Manrope;margin:0 0 12px}
+.course-detail-card p,.course-detail-card li{font-size:13px;color:var(--muted);line-height:1.75}
+.course-detail-card ul,.course-detail-card ol{padding-inline-start:22px;margin:0}
+.course-syllabus-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.course-fee-line{padding:14px 16px;background:var(--mint);border-radius:12px;margin:18px 0;color:var(--forest)}
+.library-book-results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0}
+.library-book-card{display:flex;gap:14px;align-items:flex-start;background:var(--white);border:1px solid var(--line);border-radius:14px;padding:14px;min-width:0}
+.library-book-card img,.library-book-placeholder{width:76px;height:108px;object-fit:cover;border-radius:7px;background:#edf2ee;flex-shrink:0}
+.library-book-placeholder{display:grid;place-items:center;font:800 12px Manrope;color:var(--muted)}
+.library-book-card>div:last-child{min-width:0}
+.library-book-card b{font:700 13px Manrope;display:block;line-height:1.45}
+.library-book-card p{font-size:12px;color:var(--muted);margin:6px 0}
+.library-book-card small{display:block;font-size:10px;color:var(--muted);margin-bottom:10px}
+.library-book-card .btn{display:inline-block;text-decoration:none;margin-top:3px}
+.attendance-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0}
+.attendance-summary>div{padding:16px;background:var(--white);border:1px solid var(--line);border-radius:13px}
+.attendance-summary b{display:block;font:800 24px Manrope;color:var(--forest)}
+.attendance-summary small{font-size:11px;color:var(--muted)}
+.attendance-record{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:15px 0;border-bottom:1px solid var(--line)}
+.attendance-record h4{font:700 14px Manrope;margin:5px 0}
+.attendance-record p,.attendance-record small{font-size:11px;color:var(--muted);margin:4px 0}
+.attendance-status{border-radius:30px;padding:7px 12px;font-size:10px;font-weight:800;white-space:nowrap;background:#edf3ef;color:#375b49}
+.attendance-status.present{background:#e0f3e8;color:#176b53}
+.attendance-status.late{background:#fff2d9;color:#8b6119}
+.attendance-status.absent{background:#fbe8e6;color:#9b3f36}
+.pending-invoice-notice{padding:16px;border:1px solid #eadfc7;border-radius:13px;background:#fffaf0;margin:12px 0}
+.pending-invoice-notice b{display:block;margin-bottom:8px}
+.pending-invoice-notice p,.payment-instructions p{font-size:12px;line-height:1.7;color:var(--muted);margin:8px 0 0}
+.payment-instructions{padding:14px 16px;background:#f4f7f4;border-radius:12px;margin:14px 0}
+.payment-instructions b{font:700 13px Manrope;color:var(--forest)}
+.payment-history-item{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--line)}
+.chat-delete{margin-inline-start:auto}
+.chat-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+@media(max-width:700px){.course-detail-grid{grid-template-columns:1fr}.course-syllabus-grid,.library-book-results{grid-template-columns:1fr}.attendance-summary{gap:7px}.attendance-summary>div{padding:12px}.library-book-card{padding:11px}.attendance-record{align-items:flex-start}}
+
 </style>
 </head>
 <body>
@@ -744,6 +785,6 @@ body[data-theme="dark"] .library-tools input,body[data-theme="dark"] .library-to
 <script>(function(){const saved=localStorage.getItem("aurevia-theme");document.body.dataset.theme=saved==="dark"?"dark":"light";window.aureviaToggleTheme=function(){const next=document.body.dataset.theme==="dark"?"light":"dark";document.body.dataset.theme=next;localStorage.setItem("aurevia-theme",next);const b=document.getElementById("themeToggle");if(b)b.textContent=next==="dark"?"Light mode":"Dark mode";};document.addEventListener("DOMContentLoaded",function(){const b=document.getElementById("themeToggle");if(b)b.textContent=document.body.dataset.theme==="dark"?"Light mode":"Dark mode";});})();</script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-config.js?v=20261110-3"></script>
 <script src="js/supabase-client.js?v=20261110-3"></script>
-<script src="js/app.js?v=20261114-5"></script>
-<script src="js/i18n.js?v=20261114-4"></script>
+<script src="js/app.js?v=20261114-7"></script>
+<script src="js/i18n.js?v=20261114-6"></script>
 </body></html>
