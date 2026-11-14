@@ -1,6 +1,6 @@
-# RU'YA Global Knowledge Hub
+# AUREVIA GED Academy
 
-The RU'YA repository contains the public institutional website and the evolving role-based learning platform.
+The AUREVIA repository contains the public institutional website and the evolving role-based learning platform.
 
 ## Included
 - Responsive public institutional website.
@@ -11,10 +11,10 @@ The RU'YA repository contains the public institutional website and the evolving 
 - Production activation and security checklist in [docs/PRODUCTION_SETUP.md](docs/PRODUCTION_SETUP.md).
 
 ## Deployment and activation
-The public website is hosted on GitHub Pages. Authentication and private academic records require an RU'YA-owned Supabase project. Apply [the database migration](supabase/migrations/20261102000100_initial_platform.sql), configure [the browser project settings](js/supabase-config.js), and follow [the production setup guide](docs/PRODUCTION_SETUP.md).
+The public website is hosted on GitHub Pages. Authentication and private academic records require an AUREVIA-owned Supabase project. Apply [the database migration](supabase/migrations/20261102000100_initial_platform.sql), configure [the browser project settings](js/supabase-config.js), and follow [the production setup guide](docs/PRODUCTION_SETUP.md).
 
 ## Security
-New public registrations are students only. Teacher and management permissions must be assigned by authorized management. Row-level security restricts data access by role and class assignment. Do not enter real student or staff information until the RU'YA-owned backend is configured, email delivery is secured, policies are reviewed and backups are enabled.
+New public registrations are students only. Teacher and management permissions must be assigned by authorized management. Row-level security restricts data access by role and class assignment. Do not enter real student or staff information until the AUREVIA-owned backend is configured, email delivery is secured, policies are reviewed and backups are enabled.
 
 Never place a Supabase service-role key, database password or other server secret in this repository or browser code. The anon/publishable key is designed for browser use only when row-level security is correctly configured.
 
