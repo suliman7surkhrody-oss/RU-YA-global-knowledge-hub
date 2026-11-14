@@ -133,7 +133,6 @@ async function courses(){
  return form+panel("Course catalogue",rows.join("")||empty("No courses have been added."));
 }
 async function classes(){
-async function classes(){
  let sections=[];
  if(profile.role==="student"){const q=await db().from("enrollments").select("class_sections(id,title,starts_at,meeting_url,courses(title))").eq("student_id",user.id).eq("status","active");if(q.error)throw q.error;sections=(q.data||[]).map(x=>x.class_sections).filter(Boolean)}
  else{const q=profile.role==="management"?await db().from("class_sections").select("id,title,starts_at,meeting_url,courses(title)"):await db().from("class_sections").select("id,title,starts_at,meeting_url,courses(title)").eq("teacher_id",user.id);if(q.error)throw q.error;sections=q.data||[]}
@@ -205,7 +204,6 @@ async function library(){
  setTimeout(()=>{["portalLibrarySearch","portalLibraryCategory","portalLibraryLanguage"].forEach(id=>$(id)?.addEventListener(id==="portalLibrarySearch"?"input":"change",draw));draw()},0);
  return form+panel("AUREVIA learning library",'<p class="record-note">Search and filter study materials by subject and language. Open external resources or securely download uploaded files.</p>'+controls);
 }
-async function people(){
 async function people(){
  const [r,s]=await Promise.all([db().from("profiles").select("id,email,full_name,role,is_active").order("created_at",{ascending:false}),db().from("class_sections").select("id,title,courses(title)")]);if(r.error)throw r.error;if(s.error)throw s.error;
  const students=r.data.filter(x=>x.role==="student"&&x.is_active);
@@ -327,7 +325,6 @@ async function fees(){
  }),0);
  return panel("My fee account",cards);
 }
-async function setupNotificationRealtime(){
 async function setupNotificationRealtime(){
  if(!db()||!user)return;
  if(notificationChannel){db().removeChannel(notificationChannel);notificationChannel=null}
