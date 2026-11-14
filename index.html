@@ -773,6 +773,7 @@ body[data-theme="dark"] .library-tools input,body[data-theme="dark"] .library-to
 </div>
 <div class="modal-wrap" id="loginModal" role="dialog" aria-modal="true" aria-labelledby="authModeTitle"><div class="modal"><div class="brand" style="margin-bottom:22px"><img class="brand-mark" src="assets/aurevia-mark.svg" alt="AUREVIA emblem"><div class="brandname">AUREVIA<small>GED ACADEMY</small></div></div><h2 id="authModeTitle">Welcome back</h2><p>Use your AUREVIA account to enter your secure workspace.</p><p class="backend-status" id="backendStatus" role="status">Checking secure account service…</p><form id="authForm" onsubmit="event.preventDefault();ruyaAuthSubmit()">
 <div id="authNameWrap" class="field" hidden><label for="authName">Full name</label><input id="authName" name="full_name" type="text" autocomplete="name" placeholder="Your full name"></div>
+<div class="field" id="authCountryWrap" hidden><label for="authCountry">Country of residence</label><input id="authCountry" name="country" type="text" autocomplete="country-name" placeholder="e.g. Afghanistan"></div>
 <div class="field"><label for="authEmail">Email address</label><input id="authEmail" name="email" type="email" placeholder="you@example.com" autocomplete="username" required></div>
 <div class="field"><label for="authPassword">Password</label><input id="authPassword" name="password" type="password" autocomplete="current-password" placeholder="At least 8 characters" minlength="8" required></div>
 <p id="authError" class="auth-error" role="alert" aria-live="polite"></p>
