@@ -4,7 +4,7 @@ const $=id=>document.getElementById(id), db=()=>window.ruyaSupabase;
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const nice=s=>String(s||"").replace(/[_-]/g," ").replace(/\b\w/g,c=>c.toUpperCase());
 let user=null,profile=null,page="Overview";
-const menus={student:["Overview","GED study plan","Live classes","Assignments","Attendance","GED library","Announcements","Messages"],teacher:["Overview","My GED classes","Teaching schedule","Assignments & grading","Attendance register","GED learning resources","Announcements","Messages"],management:["Overview","GED programs","People & roles","Timetables","Academic records","GED library","Announcements","Messages"]};
+const menus={student:["Overview","GED study plan","Live classes","Assignments","Attendance","GED library","Community chat","Fees & payments","Notifications","Announcements","Messages"],teacher:["Overview","My GED classes","Teaching schedule","Assignments & grading","Attendance register","GED learning resources","Community chat","Notifications","Announcements","Messages"],management:["Overview","GED programs","People & roles","Timetables","Academic records","GED library","Community chat","Fees & payments","Notifications","Announcements","Messages"]};
 function toast(s){const e=$("toast");e.textContent=s;e.classList.add("show");setTimeout(()=>e.classList.remove("show"),3200)}
 let authSignup=false,authReturnFocus=null,recoveryMode=false,pendingPage=null;
 function close(){ $("loginModal").classList.remove("show");$("authPassword").value="";$("authError").textContent="";if(authReturnFocus&&typeof authReturnFocus.focus==="function")authReturnFocus.focus(); }
@@ -55,7 +55,7 @@ function field(label,name,type){return '<label class="live-field">'+esc(label)+'
 function formData(f){const o={};new FormData(f).forEach((v,k)=>o[k]=v);return o}
 function bind(id,fn){const f=$(id);if(f)f.onsubmit=async e=>{e.preventDefault();try{await fn(f)}catch(x){toast(x.message||"Action failed.")}}}
 async function render(p){
- page=p;nav();$("dashContent").innerHTML=shell(p,"Loading secure institutional records…",'<p class="loading-line">Connecting…</p>');
+ if(p!=="Community chat"&&communityChannel){db().removeChannel(communityChannel);communityChannel=null;}page=p;nav();$("dashContent").innerHTML=shell(p,"Loading secure institutional records…",'<p class="loading-line">Connecting…</p>');
  try{
   let b="";
   if(p==="Overview")b=await overview();
@@ -66,7 +66,7 @@ async function render(p){
   else if(["Learning library","GED library","Learning resources","GED learning resources","Resources"].includes(p))b=await library();
   else if(p==="People & roles")b=await people();
   else if(p==="Announcements")b=await announcements();
-  else if(p==="Messages")b=await messages();
+  else if(p==="Messages")b=await messages();\n  else if(p==="Community chat")b=await communityChat();\n  else if(p==="Fees & payments")b=await fees();\n  else if(p==="Notifications")b=await notifications();
   else b=await records();
   $("dashContent").innerHTML=shell(p,"Live data from the AUREVIA academic workspace.",b);
  }catch(e){$("dashContent").innerHTML=shell(p,"Unable to load this section.",panel("Connection issue",'<p class="error-copy">'+esc(e.message)+'</p><button class="btn btn-outline" onclick="ruyaNavigate(\''+p+'\')">Retry</button>'))}
@@ -184,7 +184,85 @@ async function messages(){
  setTimeout(()=>bind("messageForm",async f=>{const v=formData(f);const q=await db().from("messages").insert({sender_id:user.id,recipient_id:v.recipient_id,subject:v.subject,body:v.body});if(q.error)throw q.error;toast("Message sent.");render(page)}),0);
  return form+panel("Inbox and sent messages",(r.data||[]).map(x=>'<article class="live-record"><h4>'+esc(x.subject||"Message")+'</h4><p>'+esc(x.body)+'</p><small>'+(x.sender_id===user.id?"Sent":"Received")+' · '+esc(date(x.created_at))+'</small></article>').join("")||empty("No messages."));
 }
-async function records(){
+
+let communityChannel=null;
+
+async function showPublicSubject(subjectId){
+ const box=$("gedPublicLessons");if(!box)return;
+ box.hidden=false;box.innerHTML='<p class="empty-state">Loading published lessons…</p>';
+ const r=await db().from("ged_lessons").select("id,title_en,title_dari,summary_en,summary_dari,estimated_minutes,resource_url").eq("subject_id",subjectId).eq("is_published",true).order("sort_order");
+ if(r.error){box.innerHTML='<p class="empty-state">'+esc(r.error.message)+'</p>';return}
+ box.innerHTML='<div class="public-lesson-head"><h3>Open lessons</h3><button class="activity-tag" type="button" onclick="document.getElementById(\'gedPublicLessons\').hidden=true">Close</button></div>'+(r.data||[]).map(x=>'<article class="public-lesson"><h4><span class="en">'+esc(x.title_en)+'</span><span class="prs">'+esc(x.title_dari)+'</span></h4><p><span class="en">'+esc(x.summary_en)+'</span><span class="prs">'+esc(x.summary_dari)+'</span></p><small>'+esc(x.estimated_minutes)+' min</small>'+(x.resource_url?'<a href="'+esc(x.resource_url)+'" target="_blank" rel="noopener">Open lesson ↗</a>':"")+'</article>').join("")||'<p class="empty-state">Lessons for this subject are being prepared. Please check again soon.</p>';
+ box.scrollIntoView({behavior:"smooth",block:"start"});
+}
+async function loadPublicGedCatalog(){
+ if(!db())return;
+ const [s,l]=await Promise.all([
+  db().from("ged_subjects").select("id,code,title_en,title_dari,summary_en,summary_dari,exam_duration_minutes,topics").eq("is_published",true).order("sort_order"),
+  db().from("library_resources").select("id,title,description,category,external_url,resource_type").eq("visibility","public").order("created_at",{ascending:false}).limit(30)
+ ]);
+ const grid=$("gedSubjectGrid");
+ if(grid){
+  if(s.error)grid.innerHTML='<p class="empty-state">The GED catalogue is temporarily unavailable.</p>';
+  else grid.innerHTML=(s.data||[]).map(x=>'<article class="ged-subject-card"><div class="subject-code">'+esc(x.code)+'</div><h3><span class="en">'+esc(x.title_en)+'</span><span class="prs">'+esc(x.title_dari)+'</span></h3><p><span class="en">'+esc(x.summary_en)+'</span><span class="prs">'+esc(x.summary_dari)+'</span></p><div class="subject-meta">'+esc(x.exam_duration_minutes)+' minutes · '+esc((x.topics||[]).length)+' topic groups</div><button class="btn btn-green" type="button" data-public-subject="'+x.id+'">Explore subject ↗</button></article>').join("")||'<p class="empty-state">GED subjects are being prepared.</p>';
+ }
+ const library=$("publicLibraryResources");
+ if(library){
+  if(l.error)library.innerHTML='<p class="empty-state">Public resources are temporarily unavailable.</p>';
+  else library.innerHTML=(l.data||[]).filter(x=>x.external_url).map(x=>'<a class="public-resource" href="'+esc(x.external_url)+'" target="_blank" rel="noopener"><b>'+esc(x.title)+'</b><small>'+esc(x.category)+' · '+esc(x.description)+'</small><span>Open ↗</span></a>').join("")||'<p class="empty-state">Open learning resources will appear here as they are published.</p>';
+ }
+}
+\nasync function communityChat(){
+ const r=await db().from("community_messages").select("id,body,created_at,sender_id,profiles!community_messages_sender_id_fkey(full_name,role)").eq("room_key","general").is("deleted_at",null).order("created_at",{ascending:false}).limit(80);
+ if(r.error)throw r.error;
+ const messages=(r.data||[]).reverse().map(m=>'<article class="chat-message '+(m.sender_id===user.id?'mine':'')+'"><div class="chat-meta"><b>'+esc(m.profiles?.full_name||"AUREVIA learner")+'</b><span>'+esc(nice(m.profiles?.role||"student"))+' · '+esc(date(m.created_at))+'</span></div><p>'+esc(m.body)+'</p></article>').join("")||empty("No messages yet. Start the conversation.");
+ if(!communityChannel){
+  communityChannel=db().channel("aurevia-community-general").on("postgres_changes",{event:"INSERT",schema:"public",table:"community_messages",filter:"room_key=eq.general"},()=>{if(page==="Community chat")render("Community chat")}).subscribe();
+ }
+ const body='<div class="community-chat"><div class="chat-feed" id="communityFeed">'+messages+'</div><form class="chat-compose" id="communityForm"><textarea name="body" maxlength="3000" rows="2" placeholder="Write a respectful message to the GED community…" required></textarea><button class="btn btn-green" type="submit">Send</button></form><small class="chat-guideline">Be respectful. Do not share passwords, private information or copyrighted books.</small></div>';
+ setTimeout(()=>bind("communityForm",async f=>{const v=formData(f);const q=await db().from("community_messages").insert({room_key:"general",sender_id:user.id,body:v.body.trim()});if(q.error)throw q.error;f.reset();render("Community chat")}),0);
+ return panel("General learner discussion",body);
+}
+async function fees(){
+ if(profile.role==="management"){
+  const [students,inv,pay]=await Promise.all([
+   db().from("profiles").select("id,full_name,email").eq("role","student").eq("is_active",true).order("full_name"),
+   db().from("fee_invoices").select("id,title,billing_period,amount,currency,due_date,status,student_id,profiles!fee_invoices_student_id_fkey(full_name,email)").order("due_date",{ascending:false}),
+   db().from("fee_payments").select("id,invoice_id,student_id,amount,currency,payment_method,transaction_reference,verification_status,paid_at,profiles!fee_payments_student_id_fkey(full_name,email)").order("created_at",{ascending:false})
+  ]);
+  for(const x of [students,inv,pay])if(x.error)throw x.error;
+  const form='<form class="live-form" id="invoiceForm"><label class="live-field">Student<select name="student_id" required>'+students.data.map(x=>'<option value="'+x.id+'">'+esc(x.full_name||x.email)+'</option>').join("")+'</select></label>'+field("Invoice title","title")+field("Billing period (e.g. November 2026)","billing_period")+'<div class="form-pair">'+field("Amount","amount","number")+'<label class="live-field">Currency<select name="currency"><option value="AFN">AFN</option><option value="USD">USD</option></select></label></div><label class="live-field">Due date<input name="due_date" type="date" required></label><label class="live-field">Description<textarea name="description"></textarea></label><button class="btn btn-green">Create fee invoice</button></form>';
+  setTimeout(()=>bind("invoiceForm",async f=>{const v=formData(f);const q=await db().from("fee_invoices").insert({student_id:v.student_id,title:v.title,billing_period:v.billing_period,amount:Number(v.amount),currency:v.currency,due_date:v.due_date,description:v.description||"",created_by:user.id});if(q.error)throw q.error;toast("Invoice created.");render("Fees & payments")}),0);
+  const invoices=(inv.data||[]).map(x=>row(x.profiles?.full_name||x.profiles?.email||"Student",x.title+" · "+x.currency+" "+x.amount+" · Due "+x.due_date,nice(x.status))).join("")||empty("No invoices created yet.");
+  const pending=(pay.data||[]).filter(x=>x.verification_status==="pending").map(x=>'<article class="live-record"><h4>'+esc(x.profiles?.full_name||x.profiles?.email||"Student")+' · '+esc(x.currency)+' '+esc(x.amount)+'</h4><p>'+esc(nice(x.payment_method))+' · '+esc(x.transaction_reference||"No reference")+'</p><small>Submitted '+esc(date(x.paid_at))+'</small><div class="dash-actions"><button class="btn btn-green" data-verify-payment="'+x.id+'" data-invoice="'+x.invoice_id+'">Verify payment</button><button class="btn btn-outline" data-reject-payment="'+x.id+'">Reject</button></div></article>').join("")||empty("No payments awaiting verification.");
+  return form+panel("Fee invoices",invoices)+panel("Payment verification",pending);
+ }
+ const r=await db().from("fee_invoices").select("id,title,description,billing_period,amount,currency,due_date,status,fee_payments(id,amount,currency,payment_method,transaction_reference,verification_status,paid_at)").eq("student_id",user.id).order("due_date",{ascending:false});
+ if(r.error)throw r.error;
+ const cards=(r.data||[]).map(x=>{
+  const paid=(x.fee_payments||[]).filter(p=>p.verification_status==="verified").reduce((s,p)=>s+Number(p.amount),0);
+  const remaining=Math.max(0,Number(x.amount)-paid);
+  const dueStatus=x.status==="pending"&&x.due_date<new Date().toISOString().slice(0,10)?"OVERDUE":nice(x.status).toUpperCase();
+  const history=(x.fee_payments||[]).map(p=>'<small>'+esc(p.currency)+' '+esc(p.amount)+' · '+esc(nice(p.verification_status))+' · '+esc(date(p.paid_at))+'</small>').join("<br>");
+  const form=x.status!=="paid"&&x.status!=="cancelled"?'<form class="live-form feePayForm" data-invoice-id="'+x.id+'"><div class="form-pair">'+field("Amount paid","amount","number")+'<label class="live-field">Payment method<select name="payment_method"><option value="cash">Cash</option><option value="bank_transfer">Bank transfer</option><option value="mobile_money">Mobile money</option><option value="other">Other</option></select></label></div>'+field("Transaction / receipt reference","transaction_reference")+'<button class="btn btn-green">Submit payment for verification</button></form>':"";
+  return '<article class="live-record fee-invoice"><div class="fee-head"><div><h4>'+esc(x.title)+'</h4><small>'+esc(x.billing_period)+' · Due '+esc(x.due_date)+'</small></div><span class="activity-tag">'+esc(dueStatus)+'</span></div><p>'+esc(x.description)+'</p><div class="fee-total"><b>'+esc(x.currency)+' '+esc(x.amount)+'</b><span>Paid: '+esc(paid.toFixed(2))+' · Remaining: '+esc(remaining.toFixed(2))+'</span></div>'+history+form+'</article>';
+ }).join("")||empty("No fee invoices have been assigned to your account.");
+ setTimeout(()=>document.querySelectorAll(".feePayForm").forEach(f=>f.onsubmit=async e=>{e.preventDefault();const v=formData(f);const invoice=(r.data||[]).find(x=>x.id===f.dataset.invoiceId);const amount=Number(v.amount);if(!invoice||!Number.isFinite(amount)||amount<=0||amount>Number(invoice.amount))return toast("Enter a valid payment amount.");const q=await db().from("fee_payments").insert({invoice_id:invoice.id,student_id:user.id,amount,currency:invoice.currency,payment_method:v.payment_method,transaction_reference:v.transaction_reference||"",verification_status:"pending"});if(q.error)toast(q.error.message);else{toast("Payment submitted for management verification.");render("Fees & payments")}}),0);
+ return panel("My fee account",cards);
+}
+async function notifications(){
+ const [n,p]=await Promise.all([
+  db().from("notifications").select("id,title,body,notification_type,action_url,scheduled_for,sent_at,read_at").eq("recipient_id",user.id).order("scheduled_for",{ascending:false}).limit(60),
+  db().from("notification_preferences").select("*").eq("user_id",user.id).maybeSingle()
+ ]);
+ if(n.error)throw n.error;if(p.error)throw p.error;
+ const pref=p.data||{daily_homework:true,weekly_lesson:true,monthly_fee:true,browser_notifications:false,email_notifications:true,timezone:"Asia/Kabul"};
+ const form='<form class="live-form" id="notificationPrefs"><label class="check-field"><input type="checkbox" name="daily_homework" '+(pref.daily_homework?'checked':'')+'> Daily homework reminders</label><label class="check-field"><input type="checkbox" name="weekly_lesson" '+(pref.weekly_lesson?'checked':'')+'> Weekly lesson reminders</label><label class="check-field"><input type="checkbox" name="monthly_fee" '+(pref.monthly_fee?'checked':'')+'> Monthly fee reminders</label><label class="check-field"><input type="checkbox" name="browser_notifications" '+(pref.browser_notifications?'checked':'')+'> Browser notifications (permission required)</label><label class="check-field"><input type="checkbox" name="email_notifications" '+(pref.email_notifications?'checked':'')+'> Email notifications</label><label class="live-field">Time zone<input name="timezone" value="'+esc(pref.timezone)+'" required></label><button class="btn btn-green">Save notification settings</button></form>';
+ setTimeout(()=>bind("notificationPrefs",async f=>{const v=formData(f);const q=await db().from("notification_preferences").upsert({user_id:user.id,daily_homework:!!v.daily_homework,weekly_lesson:!!v.weekly_lesson,monthly_fee:!!v.monthly_fee,browser_notifications:!!v.browser_notifications,email_notifications:!!v.email_notifications,timezone:v.timezone});if(q.error)throw q.error;toast("Notification settings saved.")}),0);
+ const list=(n.data||[]).map(x=>'<article class="notification-row '+(x.read_at?'read':'unread')+'"><div><b>'+esc(x.title)+'</b><p>'+esc(x.body)+'</p><small>'+esc(nice(x.notification_type))+' · '+esc(date(x.sent_at||x.scheduled_for))+'</small></div>'+(x.read_at?"":'<button class="activity-tag" data-read-notification="'+x.id+'">Mark read</button>')+'</article>').join("")||empty("You have no notifications yet.");
+ return panel("Notification preferences",form)+panel("Your notifications",list);
+}
+\nasync function records(){
  const [a,b,c]=await Promise.all([db().from("attendance").select("id"),db().from("submissions").select("id"),db().from("enrollments").select("id")]);for(const x of [a,b,c])if(x.error)throw x.error;
  let termForm="",termRows="";
  if(profile.role==="management"){
@@ -196,7 +274,7 @@ async function records(){
  return panel("Academic records summary",'<div class="workspace-stats"><div class="workspace-stat"><div class="stat-top">Attendance entries</div><strong>'+a.data.length+'</strong></div><div class="workspace-stat"><div class="stat-top">Submissions</div><strong>'+b.data.length+'</strong></div><div class="workspace-stat"><div class="stat-top">Enrollments</div><strong>'+c.data.length+'</strong></div></div>')+termForm+panel("Academic terms",termRows);
 }
 document.addEventListener("click",async e=>{
- const file=e.target.closest("[data-download-path]");if(file){const win=window.open("about:blank","_blank");const signed=await db().storage.from("ruya-private").createSignedUrl(file.dataset.downloadPath,60);if(signed.error){if(win)win.close();toast(signed.error.message)}else if(win)win.location.href=signed.data.signedUrl;else toast("Allow pop-ups to open this private file.");return}
+ const verify=e.target.closest("[data-verify-payment]");if(verify){const id=verify.dataset.verifyPayment,invoiceId=verify.dataset.invoice;const q=await db().from("fee_payments").update({verification_status:"verified",recorded_by:user.id,verified_at:new Date().toISOString()}).eq("id",id);if(q.error)return toast(q.error.message);const [inv,paid]=await Promise.all([db().from("fee_invoices").select("amount").eq("id",invoiceId).single(),db().from("fee_payments").select("amount").eq("invoice_id",invoiceId).eq("verification_status","verified")]);if(inv.error||paid.error)return toast((inv.error||paid.error).message);const sum=paid.data.reduce((s,x)=>s+Number(x.amount),0);const status=sum>=Number(inv.data.amount)?"paid":sum>0?"partial":"pending";const upd=await db().from("fee_invoices").update({status}).eq("id",invoiceId);if(upd.error)return toast(upd.error.message);toast("Payment verified.");render("Fees & payments");return}const reject=e.target.closest("[data-reject-payment]");if(reject){const q=await db().from("fee_payments").update({verification_status:"rejected",recorded_by:user.id,verified_at:new Date().toISOString()}).eq("id",reject.dataset.rejectPayment);if(q.error)toast(q.error.message);else{toast("Payment rejected.");render("Fees & payments")}return}const read=e.target.closest("[data-read-notification]");if(read){const q=await db().from("notifications").update({read_at:new Date().toISOString()}).eq("id",read.dataset.readNotification).eq("recipient_id",user.id);if(q.error)toast(q.error.message);else render("Notifications");return}const subject=e.target.closest("[data-public-subject]");if(subject){showPublicSubject(subject.dataset.publicSubject);return}const file=e.target.closest("[data-download-path]");if(file){const win=window.open("about:blank","_blank");const signed=await db().storage.from("ruya-private").createSignedUrl(file.dataset.downloadPath,60);if(signed.error){if(win)win.close();toast(signed.error.message)}else if(win)win.location.href=signed.data.signedUrl;else toast("Allow pop-ups to open this private file.");return}
  const a=e.target.closest("[data-active-id]");if(a){const q=await db().from("profiles").update({is_active:a.dataset.active!=="true"}).eq("id",a.dataset.activeId);if(q.error)toast(q.error.message);else render(page)}
 });
 document.addEventListener("change",async e=>{
@@ -205,8 +283,8 @@ document.addEventListener("change",async e=>{
  const q=await db().from("profiles").update({role:r.value}).eq("id",r.dataset.roleId);
  if(q.error){toast(q.error.message);render(page)}else{toast("Role updated.");render(page)}
 });
-async function signOut(){if(db())await db().auth.signOut();$("authPassword").value="";user=null;profile=null;$("dashboard").classList.remove("show");$("publicSite").style.display="block";window.scrollTo(0,0)}
-window.ruyaNavigate=render;window.ruyaSignIn=signin;window.ruyaSignUp=signupAction;window.ruyaAuthSubmit=()=>authenticate(authSignup);window.ruyaShowLogin=openLogin;window.ruyaOpenLibrary=()=>{pendingPage="Learning library";openLogin("signin");if(!db())$("authError").textContent="The learning library is part of the secure learner workspace. It will open here once AUREVIA activates account services.";else $("authError").textContent="Sign in to open the AUREVIA learning library.";};window.ruyaCloseLogin=close;window.ruyaSignOut=signOut;window.ruyaResetPassword=resetPassword;window.ruyaAuthSwitch=()=>mode($("authSwitch").dataset.mode||"signup");
+async function signOut(){if(communityChannel&&db()){db().removeChannel(communityChannel);communityChannel=null}if(db())await db().auth.signOut();$("authPassword").value="";user=null;profile=null;$("dashboard").classList.remove("show");$("publicSite").style.display="block";window.scrollTo(0,0)}
+window.ruyaNavigate=render;window.ruyaSignIn=signin;window.ruyaSignUp=signupAction;window.ruyaAuthSubmit=()=>authenticate(authSignup);window.ruyaShowLogin=openLogin;window.ruyaOpenLibrary=()=>{const el=$("ged-public-learning");if(el)el.scrollIntoView({behavior:"smooth"});};window.ruyaCloseLogin=close;window.ruyaSignOut=signOut;window.ruyaResetPassword=resetPassword;window.ruyaAuthSwitch=()=>mode($("authSwitch").dataset.mode||"signup");
 document.addEventListener("DOMContentLoaded",async()=>{
  $("year").textContent=new Date().getFullYear();$("loginModal").addEventListener("click",e=>{if(e.target===$("loginModal"))close()});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("loginModal").classList.contains("show"))close()});
  const status=$("backendStatus");if(!db()){if(status)status.textContent="Account services are not connected yet. You can explore the public website, but account creation, sign-in and password recovery are temporarily unavailable.";$("authSubmit").disabled=true;$("authSubmit").title="Waiting for AUREVIA account service activation";$("authSwitch").disabled=false;$("forgotPassword").disabled=false;return}else{if(status)status.textContent="Secure account service connected. Use your AUREVIA email and password.";$("authSubmit").disabled=false;$("authSwitch").disabled=false;$("forgotPassword").disabled=false}
