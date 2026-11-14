@@ -431,7 +431,7 @@ async function notifications(){
   db().from("notification_preferences").select("*").eq("user_id",user.id).maybeSingle()
  ]);
  if(n.error)throw n.error;if(p.error)throw p.error;
- const pref=p.data||{daily_homework:true,weekly_lesson:true,monthly_fee:true,class_session_reminders:true,browser_notifications:false,email_notifications:false,timezone:"Asia/Kabul",preferred_language:"en"};
+ const pref=p.data||{daily_homework:true,weekly_lesson:true,monthly_fee:true,class_session_reminders:true,browser_notifications:true,email_notifications:false,timezone:"Asia/Kabul",preferred_language:"en"};
  const form='<form class="live-form" id="notificationPrefs"><label class="check-field"><input type="checkbox" name="daily_homework" '+(pref.daily_homework?'checked':'')+'> Daily homework reminders</label><label class="check-field"><input type="checkbox" name="weekly_lesson" '+(pref.weekly_lesson?'checked':'')+'> Weekly lesson reminders</label><label class="check-field"><input type="checkbox" name="monthly_fee" '+(pref.monthly_fee?'checked':'')+'> Monthly fee reminders</label><label class="check-field"><input type="checkbox" name="class_session_reminders" '+(pref.class_session_reminders?'checked':'')+'> Remind me before each scheduled live class</label><label class="check-field"><input type="checkbox" name="browser_notifications" '+(pref.browser_notifications?'checked':'')+'> Browser alerts while this site is open (permission required)</label><label class="check-field"><input type="checkbox" name="email_notifications" disabled '+(pref.email_notifications?'checked':'')+'> Email notifications (not connected yet)</label><label class="live-field">Notification language<select name="preferred_language"><option value="en" '+(pref.preferred_language==="en"?"selected":"")+'>English</option><option value="prs" '+(pref.preferred_language==="prs"?"selected":"")+'>دری</option></select></label><label class="live-field">Time zone<input name="timezone" value="'+esc(pref.timezone)+'" required></label><button class="btn btn-green">Save notification settings</button></form>';
  setTimeout(()=>bind("notificationPrefs",async f=>{
   const v=formData(f);
@@ -447,7 +447,7 @@ async function notifications(){
   toast(browserAllowed||!v.browser_notifications?"Notification settings saved.":"Browser permission was not granted; in-app reminders remain active.");
   setupNotificationRealtime();
 }),0);
- const list=(n.data||[]).map(x=>'<article class="notification-row '+(x.read_at?'read':'unread')+'"><div><b>'+esc(x.title)+'</b><p>'+esc(x.body)+'</p><small>'+esc(nice(x.notification_type))+' · '+esc(date(x.sent_at||x.scheduled_for))+'</small></div>'+(x.read_at?"":'<button class="activity-tag" data-read-notification="'+x.id+'">Mark read</button>')+'</article>').join("")||empty("You have no notifications yet.");
+ const list=(n.data||[]).map(x=>'<article class="notification-row '+(x.read_at?'read':'unread')+'"><div><b>'+esc(x.title)+'</b><p>'+esc(x.body)+'</p><small>'+esc(nice(x.notification_type))+' · '+esc(date(x.sent_at||x.scheduled_for))+'</small>'+(x.action_url?'<button class="activity-tag" type="button" data-open-live-classes>OPEN LIVE CLASSES ↗</button>':"")+'</div>'+(x.read_at?"":'<button class="activity-tag" data-read-notification="'+x.id+'">Mark read</button>')+'</article>').join("")||empty("You have no notifications yet.");
  return panel("Notification preferences",form)+panel("Your notifications",list);
 }
 
