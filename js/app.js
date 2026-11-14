@@ -9,7 +9,7 @@ function toast(s){const e=$("toast");e.textContent=s;e.classList.add("show");set
 let authSignup=false,authReturnFocus=null,recoveryMode=false,pendingPage=null;
 function close(){ $("loginModal").classList.remove("show");$("authPassword").value="";$("authError").textContent="";if(authReturnFocus&&typeof authReturnFocus.focus==="function")authReturnFocus.focus(); }
 function authErrorMessage(e){const m=String(e&&e.message||"").toLowerCase();if(m.includes("invalid login credentials"))return "The email address or password is incorrect. Check both and try again.";if(m.includes("email not confirmed"))return "Please confirm your email address using the link sent to your inbox.";if(m.includes("user already registered"))return "An account with this email already exists. Please sign in instead.";if(m.includes("password should be at least"))return "For a new account, choose a password with at least 8 characters.";return e&&e.message?e.message:"Authentication failed. Please try again.";}
-function mode(m){authSignup=m==="signup";recoveryMode=m==="recovery";$("authNameWrap").hidden=!authSignup;$("authName").required=authSignup;$("authPassword").autocomplete=authSignup||recoveryMode?"new-password":"current-password";$("authPassword").minLength=authSignup||recoveryMode?8:1;$("authPassword").placeholder=authSignup||recoveryMode?"At least 8 characters":"Your password";$("authModeTitle").textContent=recoveryMode?"Choose a new password":authSignup?"Create your student account":"Welcome back";$("authSubmit").textContent=recoveryMode?"Update password":authSignup?"Create account":"Sign in";$("authSwitch").hidden=recoveryMode;$("forgotPassword").hidden=recoveryMode;const resend=$("resendConfirmation");if(resend)resend.hidden=true;$("authHint").textContent=recoveryMode?"Choose a new password for your AUREVIA account.":"New registrations receive student access only. AUREVIA management assigns teacher and management permissions after verifying staff identity.";$("authSwitch").textContent=authSignup?"Already registered? Sign in":"Create a student account";$("authSwitch").dataset.mode=authSignup?"signin":"signup";$("authSwitch").onclick=()=>mode(authSignup?"signin":"signup");$("authError").textContent="";}
+function mode(m){authSignup=m==="signup";recoveryMode=m==="recovery";$("authNameWrap").hidden=!authSignup;$("authName").required=authSignup;$("authCountryWrap").hidden=!authSignup;$("authCountry").required=authSignup;$("authPassword").autocomplete=authSignup||recoveryMode?"new-password":"current-password";$("authPassword").minLength=authSignup||recoveryMode?8:1;$("authPassword").placeholder=authSignup||recoveryMode?"At least 8 characters":"Your password";$("authModeTitle").textContent=recoveryMode?"Choose a new password":authSignup?"Create your student account":"Welcome back";$("authSubmit").textContent=recoveryMode?"Update password":authSignup?"Create account":"Sign in";$("authSwitch").hidden=recoveryMode;$("forgotPassword").hidden=recoveryMode;const resend=$("resendConfirmation");if(resend)resend.hidden=true;$("authHint").textContent=recoveryMode?"Choose a new password for your AUREVIA account.":"New registrations receive student access only. AUREVIA management assigns teacher and management permissions after verifying staff identity.";$("authSwitch").textContent=authSignup?"Already registered? Sign in":"Create a student account";$("authSwitch").dataset.mode=authSignup?"signin":"signup";$("authSwitch").onclick=()=>mode(authSignup?"signin":"signup");$("authError").textContent="";}
 function openLogin(initialMode){authReturnFocus=document.activeElement;$("loginModal").classList.add("show");mode(initialMode==="signup"?"signup":"signin");setTimeout(()=>$("authEmail").focus(),50)}
 async function signin(){return authenticate(false)}
 async function signupAction(){return authenticate(true)}
@@ -29,7 +29,7 @@ async function authenticate(signup){
  $("authSubmit").disabled=true;$("authError").textContent="";
  try{
   let result;
-  if(signup){const name=$("authName").value.trim();if(!name)throw Error("Enter your full name.");result=await db().auth.signUp({email,password,options:{data:{full_name:name},emailRedirectTo:location.origin+location.pathname}});}
+  if(signup){const name=$("authName").value.trim();if(!name)throw Error("Enter your full name.");result=await db().auth.signUp({email,password,options:{data:{full_name:name,country:$("authCountry").value.trim()},emailRedirectTo:location.origin+location.pathname}});}
   else result=await db().auth.signInWithPassword({email,password});
   if(result.error)throw result.error;
   if(result.data.session){try{await loadProfile(result.data.user);close()}catch(profileError){await db().auth.signOut();user=null;profile=null;$("dashboard").classList.remove("show");$("publicSite").style.display="block";throw new Error("Your account was authenticated, but its AUREVIA profile could not be opened. Please contact management or try again. "+(profileError.message||""))}}
@@ -107,7 +107,7 @@ async function overview(){
 async function courses(){
  if(profile.role==="student"){
   const [catalog,owned,invoices]=await Promise.all([
-   db().from("courses").select("id,code,title,title_dari,description,description_dari,level,category,access_type,price_amount,currency,ged_subject_id").eq("is_published",true).not("ged_subject_id","is",null).order("category").order("title"),
+   db().from("courses").select("id,code,title,title_dari,description,description_dari,level,category,access_type,price_amount,currency,price_afn,price_usd,ged_subject_id").eq("is_published",true).not("ged_subject_id","is",null).order("category").order("title"),
    db().from("enrollments").select("id,course_id,status").eq("student_id",user.id),
    db().from("fee_invoices").select("id,enrollment_id,status").eq("student_id",user.id)
   ]);
@@ -115,7 +115,7 @@ async function courses(){
   const registrations=new Map((owned.data||[]).map(x=>[x.course_id,x]));
   const invoicesByEnrollment=new Map((invoices.data||[]).filter(x=>x.enrollment_id).map(x=>[x.enrollment_id,x]));
   const cards=(catalog.data||[]).map(c=>{
-   const e=registrations.get(c.id),fee=c.access_type==="free"?"FREE":c.price_amount!=null?esc(c.currency)+" "+esc(c.price_amount) :"FEE TO BE ANNOUNCED";
+   const e=registrations.get(c.id),afghanistan=String(profile.country||"").trim().toLowerCase()==="afghanistan",localAmount=afghanistan?c.price_afn:c.price_usd,localCurrency=afghanistan?"AFN":"USD",fee=c.access_type==="free"?"FREE":localAmount!=null?esc(localCurrency)+" "+esc(localAmount):"FEE TO BE ANNOUNCED";
    const invoice=e?invoicesByEnrollment.get(e.id):null;
    const state=e?e.status==="active"?"ENROLLED":e.status==="pending"?(invoice?"INVOICE ISSUED":"WAITING FOR INVOICE"):nice(e.status).toUpperCase():"";
    const action=e?(e.status==="pending"?'<button class="activity-tag" type="button" data-open-fees>VIEW PAYMENT STATUS</button>':'<span class="activity-tag">'+esc(state)+'</span>'):'<button class="btn btn-green" type="button" data-enroll-course="'+c.id+'">'+(c.access_type==="free"?"Enrol free course":"Register for course")+'</button>';
