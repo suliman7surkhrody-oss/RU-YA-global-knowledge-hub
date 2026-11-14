@@ -751,16 +751,120 @@ body[data-theme="dark"] .library-tools input,body[data-theme="dark"] .library-to
 .chat-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 @media(max-width:700px){.course-detail-grid{grid-template-columns:1fr}.course-syllabus-grid,.library-book-results{grid-template-columns:1fr}.attendance-summary{gap:7px}.attendance-summary>div{padding:12px}.library-book-card{padding:11px}.attendance-record{align-items:flex-start}}
 
+
+/* AUREVIA public programme and timetable */
+.programme-section{background:#f7f4ec;padding:76px 28px}
+.programme-wrap{max-width:1180px;margin:auto}
+.programme-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:25px;margin-bottom:28px}
+.programme-hero .section-head{text-align:left;margin:0;max-width:700px}
+.programme-hero .section-head h2{margin-top:12px}
+.programme-facts{display:grid;grid-template-columns:repeat(3,minmax(105px,1fr));gap:9px;min-width:min(100%,350px)}
+.programme-fact{background:#fffdf8;border:1px solid #e5dfd3;border-radius:14px;padding:15px}
+.programme-fact b{display:block;font:800 22px Manrope;color:var(--forest)}
+.programme-fact span{font-size:10px;color:#77847b;line-height:1.5}
+.programme-subjects{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin:25px 0}
+.programme-subject{background:#fffdf8;border:1px solid #e5dfd3;border-radius:16px;padding:20px;min-height:195px}
+.programme-subject .subject-no{font:800 10px Manrope;letter-spacing:.15em;color:var(--coral)}
+.programme-subject h3{font:800 16px/1.3 Manrope;color:var(--forest);margin:12px 0 8px}
+.programme-subject p{font-size:12px;line-height:1.7;color:#718078;margin:0}
+.programme-subject small{display:block;margin-top:13px;color:#a16c4b;font-weight:800;font-size:10px}
+.schedule-card{background:#fffdf8;border:1px solid #e5dfd3;border-radius:18px;padding:23px;margin-top:18px}
+.schedule-card h3{font:800 19px Manrope;color:var(--forest);margin:0 0 7px}
+.schedule-card>p{font-size:12px;color:#77847b;line-height:1.7;margin:0 0 17px}
+.schedule-table-wrap{overflow-x:auto}
+.schedule-table{width:100%;border-collapse:separate;border-spacing:0;min-width:600px;font-size:12px}
+.schedule-table th{background:#edf0e7;color:#4e6659;text-align:left;font-size:10px;letter-spacing:.06em;padding:12px}
+.schedule-table th:first-child{border-radius:10px 0 0 0}.schedule-table th:last-child{border-radius:0 10px 0 0}
+.schedule-table td{padding:13px 12px;border-bottom:1px solid #eee9df;color:#586b60}
+.schedule-table td:first-child{font-weight:800;color:var(--forest)}
+.schedule-table .off-day{color:#a66b50;font-weight:800}
+.schedule-foot{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.schedule-foot span{background:#f3eee3;border-radius:30px;padding:8px 11px;color:#6e776c;font-size:10px;font-weight:700}
+.subject-patterns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-top:18px}
+.subject-pattern{background:#f3f0e7;border:1px solid #e5dfd3;border-radius:14px;padding:18px}
+.subject-pattern h4{font:800 14px Manrope;color:var(--forest);margin:0 0 10px}
+.subject-pattern p{font-size:11px;line-height:1.75;color:#718078;margin:5px 0}
+.subject-pattern b{color:#a66b50}
+.roadmap{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}
+.roadmap-item{background:#fffdf8;border:1px solid #e5dfd3;border-radius:14px;padding:17px}
+.roadmap-item span{font:800 9px Manrope;color:var(--coral);letter-spacing:.13em}
+.roadmap-item h4{font:800 14px Manrope;color:var(--forest);margin:8px 0}
+.roadmap-item p{font-size:11px;line-height:1.7;color:#718078;margin:0}
+.tool-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:15px}
+.tool-card{display:flex;gap:13px;align-items:flex-start;background:#e9eee5;border-radius:14px;padding:17px}
+.tool-card strong{display:block;color:var(--forest);font:800 13px Manrope;margin-bottom:4px}
+.tool-card p{font-size:11px;line-height:1.65;color:#718078;margin:0}
+.programme-cta{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:20px;padding:22px 24px;border-radius:17px;background:var(--forest);color:#fffdf8}
+.programme-cta h3{font:800 19px Manrope;margin:0 0 6px}
+.programme-cta p{font-size:11px;line-height:1.7;color:#dce7dd;margin:0;max-width:650px}
+.programme-cta .btn{background:#e9bd79;color:#263e39;white-space:nowrap}
+@media(max-width:900px){.programme-hero{display:block}.programme-facts{margin-top:20px}.programme-subjects{grid-template-columns:repeat(2,minmax(0,1fr))}.roadmap{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.programme-section{padding:52px 18px}.programme-subjects,.subject-patterns,.tool-row{grid-template-columns:1fr}.programme-facts{grid-template-columns:repeat(3,minmax(0,1fr))}.programme-fact{padding:11px}.programme-fact b{font-size:18px}.programme-fact span{font-size:9px}.schedule-card{padding:16px}.roadmap{grid-template-columns:1fr 1fr}.programme-cta{display:block;padding:20px}.programme-cta .btn{margin-top:14px}.programme-hero .section-head{text-align:left}}
+
 </style>
 </head>
 <body>
 <div class="shell" id="publicSite">
 <header class="topbar">
  <div class="brand"><img class="brand-mark" src="assets/aurevia-mark.svg" alt="AUREVIA emblem"><div class="brandname">AUREVIA<small>GED ACADEMY</small></div></div>
- <nav class="nav"><a href="#about">About</a><a href="#ged-courses">GED courses</a><a href="#how-it-works">How it works</a></nav>
+ <nav class="nav"><a href="#about">About</a><a href="#ged-courses">GED courses</a><a href="#programme">Programme & schedule</a><a href="#how-it-works">How it works</a></nav>
  <div class="top-actions"><button class="theme-toggle" type="button" onclick="aureviaToggleTheme()" id="themeToggle">Dark mode</button><button class="lang-toggle" type="button" onclick="aureviaToggleLanguage()" aria-label="Change language">دری</button><button class="btn btn-outline" onclick="ruyaShowLogin('signup')">Create account</button><button class="btn btn-green" onclick="ruyaShowLogin('signin')">Sign in ↗</button></div>
 </header>
-<main><section class="hero" id="home"><div class="hero-inner"><div class="hero-copy"><div class="eyebrow">A CLEAR PATH TO GED SUCCESS</div><h1>Prepare for your GED.<br><span>Open new opportunities.</span></h1><p>AUREVIA GED Academy is an online learning platform that helps students prepare for the four GED subject tests through structured lessons, guided practice and teacher support.</p><div class="hero-ctas"><a class="btn btn-light" href="#ged-courses">Explore GED courses ↓</a><button class="btn btn-outline" onclick="ruyaShowLogin('signin')">Sign in to your portal ↗</button></div><div class="hero-note">English and Dari learning support · Study online · Learn at your pace</div></div><div class="hero-visual" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit-core"><span>A</span><small>AUREVIA</small></div><div class="orbit-label label-top">LEARN</div><div class="orbit-label label-right">PRACTISE</div><div class="orbit-label label-bottom">PROGRESS</div><div class="orbit-label label-left">SUCCEED</div></div></div></section><section class="section intro-section" id="about"><div class="intro-grid"><div><div class="eyebrow">ABOUT AUREVIA</div><h2>A focused online academy for GED preparation.</h2></div><div class="intro-copy"><p class="lead">AUREVIA GED Academy brings GED preparation, learning resources and student support together in one accessible online space.</p><p>Our goal is to make the GED journey clearer: understand what each subject covers, study with organised lessons, practise essential skills and receive guidance as you prepare for the exams.</p></div></div></section><section class="section ged-public-section" id="ged-courses"><div class="section-head"><div class="eyebrow">OUR GED COURSES</div><h2>Four subjects. One clear path.</h2><p>The GED credential is assessed through four subject tests. Explore each course and begin building the knowledge and skills it requires.</p></div><div class="ged-subject-grid" id="gedSubjectGrid"><p class="empty-state">Loading GED courses…</p></div><div class="ged-public-lessons" id="gedPublicLessons" hidden></div></section><section class="section course-method" id="how-it-works"><div class="section-head"><div class="eyebrow">HOW LEARNING WORKS</div><h2>Simple, structured and supportive.</h2><p>Everything is designed to help learners know what to study and what to do next.</p></div><div class="principle-grid"><article class="principle"><span>01</span><h3>Learn</h3><p>Study organised lessons and clear explanations for each GED subject.</p></article><article class="principle"><span>02</span><h3>Practise</h3><p>Strengthen your understanding with exercises, assignments and practice questions.</p></article><article class="principle"><span>03</span><h3>Get support</h3><p>Join scheduled online classes, ask questions and receive guidance from teachers.</p></article></div></section><section class="closing-section"><div class="closing-inner"><div class="eyebrow">START YOUR GED JOURNEY</div><h2>Your next step starts here.</h2><p>Explore the courses or sign in to access your AUREVIA learning space.</p><div class="hero-ctas"><button class="btn btn-light" onclick="ruyaShowLogin('signup')">Create a student account</button><button class="btn btn-outline" onclick="ruyaShowLogin('signin')">Sign in ↗</button></div></div></section><div id="library" hidden><div id="librarySourceGrid"></div><input id="librarySearch"><select id="libraryLanguage"></select><select id="libraryCategory"></select><div id="publicLibraryResources"></div></div></main>
+<main><section class="hero" id="home"><div class="hero-inner"><div class="hero-copy"><div class="eyebrow">A CLEAR PATH TO GED SUCCESS</div><h1>Prepare for your GED.<br><span>Open new opportunities.</span></h1><p>AUREVIA GED Academy is an online learning platform that helps students prepare for the four GED subject tests through structured lessons, guided practice and teacher support.</p><div class="hero-ctas"><a class="btn btn-light" href="#ged-courses">Explore GED courses ↓</a><button class="btn btn-outline" onclick="ruyaShowLogin('signin')">Sign in to your portal ↗</button></div><div class="hero-note">English and Dari learning support · Study online · Learn at your pace</div></div><div class="hero-visual" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit-core"><span>A</span><small>AUREVIA</small></div><div class="orbit-label label-top">LEARN</div><div class="orbit-label label-right">PRACTISE</div><div class="orbit-label label-bottom">PROGRESS</div><div class="orbit-label label-left">SUCCEED</div></div></div></section><section class="section intro-section" id="about"><div class="intro-grid"><div><div class="eyebrow">ABOUT AUREVIA</div><h2>A focused online academy for GED preparation.</h2></div><div class="intro-copy"><p class="lead">AUREVIA GED Academy brings GED preparation, learning resources and student support together in one accessible online space.</p><p>Our goal is to make the GED journey clearer: understand what each subject covers, study with organised lessons, practise essential skills and receive guidance as you prepare for the exams.</p></div></div></section><section class="section ged-public-section" id="ged-courses"><div class="section-head"><div class="eyebrow">OUR GED COURSES</div><h2>Four subjects. One clear path.</h2><p>The GED credential is assessed through four subject tests. Explore each course and begin building the knowledge and skills it requires.</p></div><div class="ged-subject-grid" id="gedSubjectGrid"><p class="empty-state">Loading GED courses…</p></div><div class="ged-public-lessons" id="gedPublicLessons" hidden></div></section>
+<section class="programme-section" id="programme">
+ <div class="programme-wrap">
+  <div class="programme-hero">
+   <div class="section-head"><div class="eyebrow">THE AUREVIA STUDY PLAN</div><h2>A clear six-month path to GED readiness.</h2><p>Five study days each week, four dedicated GED subjects, guided practice and progress checks. Explore the programme before enrolment opens.</p></div>
+   <div class="programme-facts">
+    <div class="programme-fact"><b>6 months</b><span>24 learning weeks</span></div>
+    <div class="programme-fact"><b>5 days</b><span>Saturday–Wednesday</span></div>
+    <div class="programme-fact"><b>10</b><span>Live classes each week</span></div>
+   </div>
+  </div>
+  <div class="programme-subjects">
+   <article class="programme-subject"><span class="subject-no">01 · MATHEMATICS</span><h3>Mathematical Reasoning</h3><p>Number skills, fractions, percentages, algebra, equations, geometry, graphs, statistics and problem-solving.</p><small>3 classes per week</small></article>
+   <article class="programme-subject"><span class="subject-no">02 · LANGUAGE ARTS</span><h3>Reasoning Through Language Arts</h3><p>Reading comprehension, vocabulary, grammar, evidence, argument analysis and extended writing.</p><small>3 classes per week</small></article>
+   <article class="programme-subject"><span class="subject-no">03 · SCIENCE</span><h3>Science</h3><p>Life science, physical science, Earth and space science, experiments, graphs and scientific reasoning.</p><small>2 classes per week</small></article>
+   <article class="programme-subject"><span class="subject-no">04 · SOCIAL STUDIES</span><h3>Social Studies</h3><p>U.S. history, civics, government, economics, geography, historical sources and data interpretation.</p><small>2 classes per week</small></article>
+  </div>
+  <div class="schedule-card">
+   <h3>Weekly class timetable</h3><p>Each live class lasts 75 minutes. A 15-minute break separates the two daily sessions. All times are Afghanistan time (Kabul).</p>
+   <div class="schedule-table-wrap"><table class="schedule-table"><thead><tr><th>DAY</th><th>4:00–5:15 PM</th><th>5:30–6:45 PM</th></tr></thead><tbody>
+    <tr><td>Saturday</td><td>Mathematics</td><td>RLA</td></tr><tr><td>Sunday</td><td>Science</td><td>Social Studies</td></tr><tr><td>Monday</td><td>Mathematics</td><td>Science</td></tr><tr><td>Tuesday</td><td>RLA</td><td>Social Studies</td></tr><tr><td>Wednesday</td><td>Mathematics</td><td>RLA</td></tr><tr><td>Thursday</td><td class="off-day">DAY OFF</td><td class="off-day">DAY OFF</td></tr><tr><td>Friday</td><td class="off-day">DAY OFF</td><td class="off-day">DAY OFF</td></tr>
+   </tbody></table></div>
+   <div class="schedule-foot"><span>12.5 live teaching hours weekly</span><span>Thursday and Friday are off</span><span>240 live sessions across 24 weeks</span></div>
+  </div>
+  <div class="schedule-card">
+   <h3>How each subject is taught</h3><p>Every subject has its own lesson sequence and weekly rhythm, so students know what to expect.</p>
+   <div class="subject-patterns">
+    <div class="subject-pattern"><h4>Mathematics · 3 weekly classes</h4><p><b>Saturday:</b> New concept and worked examples.</p><p><b>Monday:</b> Guided problem-solving and MathWise practice.</p><p><b>Wednesday:</b> GED-style questions and weekly assessment.</p></div>
+    <div class="subject-pattern"><h4>RLA · 3 weekly classes</h4><p><b>Saturday:</b> Reading, vocabulary and grammar.</p><p><b>Tuesday:</b> Argument analysis and writing.</p><p><b>Wednesday:</b> Timed reading and essay practice.</p></div>
+    <div class="subject-pattern"><h4>Science · 2 weekly classes</h4><p><b>Sunday:</b> Scientific concepts, diagrams and examples.</p><p><b>Monday:</b> Experiments, graphs, evidence and GED questions.</p></div>
+    <div class="subject-pattern"><h4>Social Studies · 2 weekly classes</h4><p><b>Sunday:</b> History, civics and key concepts.</p><p><b>Tuesday:</b> Geography, economics, maps and source analysis.</p></div>
+   </div>
+  </div>
+  <div class="schedule-card">
+   <h3>Your 24-week learning journey</h3><p>The programme moves from essential foundations to independent reasoning and examination practice.</p>
+   <div class="roadmap">
+    <article class="roadmap-item"><span>MONTH 01 · WEEKS 1–4</span><h4>Foundation & placement</h4><p>Starting-level assessment, core skills, learning routines and platform orientation.</p></article>
+    <article class="roadmap-item"><span>MONTH 02 · WEEKS 5–8</span><h4>Core knowledge</h4><p>Build subject knowledge and begin regular GED-style questions.</p></article>
+    <article class="roadmap-item"><span>MONTH 03 · WEEKS 9–12</span><h4>Intermediate application</h4><p>Apply concepts, strengthen analysis and complete a mid-programme assessment.</p></article>
+    <article class="roadmap-item"><span>MONTH 04 · WEEKS 13–16</span><h4>Advanced reasoning</h4><p>Work with complex problems, evidence, arguments and data.</p></article>
+    <article class="roadmap-item"><span>MONTH 05 · WEEKS 17–20</span><h4>GED exam preparation</h4><p>Timed practice, subject mock tests and targeted correction.</p></article>
+    <article class="roadmap-item"><span>MONTH 06 · WEEKS 21–24</span><h4>Final readiness</h4><p>Full practice tests, individual feedback and examination-readiness guidance.</p></article>
+   </div>
+  </div>
+  <div class="schedule-card">
+   <h3>Learning tools included</h3><p>Students will also use dedicated digital tools to strengthen their independent study.</p>
+   <div class="tool-row">
+    <div class="tool-card"><div class="path-icon">A</div><div><strong>WordUp · English vocabulary</strong><p>Build vocabulary through regular practice and use new words in reading and writing activities.</p></div></div>
+    <div class="tool-card"><div class="path-icon">∑</div><div><strong>MathWise · Mathematics</strong><p>Get extra explanations and practise mathematical questions between live classes.</p></div></div>
+   </div>
+  </div>
+  <div class="programme-cta"><div><h3>Preparing to launch — save your place in the queue.</h3><p>Registration is not open yet. Create a student account to get ready for launch; course enrolment and seat confirmation will be announced by AUREVIA management. Creating an account does not guarantee a reserved course seat.</p></div><button class="btn" onclick="ruyaShowLogin('signup')">Create student account ↗</button></div>
+ </div>
+</section>
+<section class="section course-method" id="how-it-works"><div class="section-head"><div class="eyebrow">HOW LEARNING WORKS</div><h2>Simple, structured and supportive.</h2><p>Everything is designed to help learners know what to study and what to do next.</p></div><div class="principle-grid"><article class="principle"><span>01</span><h3>Learn</h3><p>Study organised lessons and clear explanations for each GED subject.</p></article><article class="principle"><span>02</span><h3>Practise</h3><p>Strengthen your understanding with exercises, assignments and practice questions.</p></article><article class="principle"><span>03</span><h3>Get support</h3><p>Join scheduled online classes, ask questions and receive guidance from teachers.</p></article></div></section><section class="closing-section"><div class="closing-inner"><div class="eyebrow">START YOUR GED JOURNEY</div><h2>Your next step starts here.</h2><p>Explore the courses or sign in to access your AUREVIA learning space.</p><div class="hero-ctas"><button class="btn btn-light" onclick="ruyaShowLogin('signup')">Create a student account</button><button class="btn btn-outline" onclick="ruyaShowLogin('signin')">Sign in ↗</button></div></div></section><div id="library" hidden><div id="librarySourceGrid"></div><input id="librarySearch"><select id="libraryLanguage"></select><select id="libraryCategory"></select><div id="publicLibraryResources"></div></div></main>
 <footer class="footer"><div><b>AUREVIA GED ACADEMY</b><br><small>Learning today. Leading tomorrow.</small></div><div>© <span id="year"></span> AUREVIA GED Academy<br><small class="footer-disclaimer">AUREVIA is an independent GED preparation provider and is not affiliated with GED Testing Service.</small></div></footer>
 </div>
 <div class="dashboard" id="dashboard">
