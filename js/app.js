@@ -150,7 +150,7 @@ async function courses(){
   toast("Course fee saved. "+created+" pending invoice(s) issued.");render(page);
  }),0);
  const rows=profile.role==="management"?(r.data||[]).map(x=>'<div class="activity-row"><div class="activity-copy"><b>'+esc(x.title)+'</b><small>'+esc(x.code)+' · '+esc(x.category||"")+' · '+esc((x.access_type||"paid").toUpperCase())+'</small></div><button class="activity-tag" type="button" data-course-content="'+x.id+'">MANAGE CONTENT</button></div>').join(""):(r.data||[]).map(x=>'<div class="activity-row"><div class="activity-copy"><b>'+esc(x.courses?.title||x.title)+'</b><small>'+esc(x.courses?.code||"")+'</small></div>'+(x.courses?.id?'<button class="activity-tag" type="button" data-course-content="'+x.courses.id+'">VIEW CONTENT</button>':"")+'</div>').join("");
- return form+panel("Course catalogue",rows.join("")||empty("No courses have been added."));
+ return form+panel("Course catalogue",rows||empty("No courses have been added."));
 }
 
 async function courseContent(){
@@ -411,6 +411,25 @@ async function fees(){
   const pending=(pay.data||[]).filter(x=>x.verification_status==="pending").map(x=>'<article class="live-record"><h4>'+esc(x.profiles?.full_name||x.profiles?.email||"Student")+' · '+esc(x.currency)+' '+esc(x.amount)+'</h4><p>'+esc(nice(x.payment_method))+' · '+esc(x.transaction_reference||"No reference")+'</p>'+(x.receipt_path?'<button class="activity-tag" type="button" data-download-path="'+esc(x.receipt_path)+'">OPEN RECEIPT</button>':"")+'<small>Submitted '+esc(date(x.paid_at))+'</small><div class="dash-actions"><button class="btn btn-green" data-verify-payment="'+x.id+'" data-invoice="'+x.invoice_id+'">Verify payment</button><button class="btn btn-outline" data-reject-payment="'+x.id+'">Reject</button></div></article>').join("")||empty("No payments awaiting verification.");
   const registrations=(pendingEnrollments.data||[]).map(x=>row(x.profiles?.full_name||x.profiles?.email||"Learner",x.courses?.title||"GED course",x.courses?.price_amount!=null?"FEE SET":"SET FEE")).join("")||empty("No pending course registrations.");
   return form+panel("Pending course registrations — issue invoices here",registrations)+panel("Fee invoices",invoices)+panel("Payment verification",pending);
+ }
+ if(profile.role==="teacher"){
+  const [learners,waivers]=await Promise.all([
+   db().from("enrollments").select("id,student_id,course_id,status,profiles(full_name,email),courses(title),class_sections!inner(title,teacher_id)").eq("class_sections.teacher_id",user.id).eq("status","pending").order("enrolled_at",{ascending:false}),
+   db().from("fee_waivers").select("id,enrollment_id,student_id,course_id,reason,created_at,profiles(full_name,email),courses(title)").eq("teacher_id",user.id).order("created_at",{ascending:false})
+  ]);
+  if(learners.error)throw learners.error;if(waivers.error)throw waivers.error;
+  const options=(learners.data||[]).map(x=>'<option value="'+x.id+'">'+esc(x.profiles?.full_name||x.profiles?.email||"Learner")+' · '+esc(x.courses?.title||"Course")+' · '+esc(x.class_sections?.title||"Class")+'</option>').join("");
+  const form='<form class="live-form" id="teacherFeeWaiverForm"><h3>Grant a full course-fee scholarship</h3><p class="record-note">You may waive the full course fee for a learner in one of your assigned classes. The learner will receive course and live-class access immediately. Every waiver is recorded with your name and reason.</p><label class="live-field">Learner and course<select name="enrollment_id" required><option value="">Choose a learner</option>'+options+'</select></label><label class="live-field">Reason for full fee waiver<textarea name="reason" rows="3" minlength="8" maxlength="1000" placeholder="For example: full scholarship based on financial need or academic merit." required></textarea></label><button class="btn btn-green" '+(!(learners.data||[]).length?'disabled':'')+'>Grant full fee waiver</button></form>';
+  setTimeout(()=>bind("teacherFeeWaiverForm",async f=>{
+   const v=formData(f);if(!v.enrollment_id)throw Error("Choose a learner first.");
+   const q=await db().rpc("grant_course_fee_waiver",{_enrollment_id:v.enrollment_id,_reason:v.reason.trim()});
+   if(q.error)throw q.error;
+   toast("Full fee waiver recorded. The learner now has course and live-class access.");
+   render("Fees & payments");
+  }),0);
+  const pending=(learners.data||[]).map(x=>row(x.profiles?.full_name||x.profiles?.email||"Learner",(x.courses?.title||"Course")+" · "+(x.class_sections?.title||"Assigned class"),"PENDING FEE")).join("")||empty("There are no pending fee registrations in your assigned classes.");
+  const history=(waivers.data||[]).map(x=>row(x.profiles?.full_name||x.profiles?.email||"Learner",(x.courses?.title||"Course")+" · "+x.reason,"FULL WAIVER")).join("")||empty("You have not granted any fee waivers yet.");
+  return form+panel("Learners awaiting course payment",pending)+panel("Your fee-waiver history",history);
  }
  const [r,er]=await Promise.all([
   db().from("fee_invoices").select("id,title,description,payment_instructions,billing_period,amount,currency,due_date,status,course_id,enrollment_id,courses(title),fee_payments(id,amount,currency,payment_method,transaction_reference,receipt_path,verification_status,paid_at)").eq("student_id",user.id).order("due_date",{ascending:false}),
