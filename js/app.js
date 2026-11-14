@@ -3,8 +3,8 @@
 const $=id=>document.getElementById(id), db=()=>window.ruyaSupabase;
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const nice=s=>String(s||"").replace(/[_-]/g," ").replace(/\b\w/g,c=>c.toUpperCase());
-let user=null,profile=null,page="Overview";
-const menus={student:["Overview","GED study plan","Live classes","Assignments","Attendance","GED library","Community chat","Fees & payments","Notifications","Announcements","Messages"],teacher:["Overview","My GED classes","Teaching schedule","Assignments & grading","Attendance register","GED learning resources","Community chat","Notifications","Announcements","Messages"],management:["Overview","GED programs","People & roles","Timetables","Academic records","GED library","Community chat","Fees & payments","Notifications","Announcements","Messages"]};
+let user=null,profile=null,page="Overview",selectedCourseId=null;
+const menus={student:["Overview","Course catalogue","Live classes","Assignments","Attendance","GED library","Community chat","Fees & payments","Notifications","Announcements","Messages"],teacher:["Overview","My GED classes","Teaching schedule","Assignments & grading","Attendance register","GED learning resources","Community chat","Notifications","Announcements","Messages"],management:["Overview","GED programs","People & roles","Timetables","Academic records","GED library","Community chat","Fees & payments","Notifications","Announcements","Messages"]};
 function toast(s){const e=$("toast");e.textContent=s;e.classList.add("show");setTimeout(()=>e.classList.remove("show"),3200)}
 let authSignup=false,authReturnFocus=null,recoveryMode=false,pendingPage=null;
 function close(){ $("loginModal").classList.remove("show");$("authPassword").value="";$("authError").textContent="";if(authReturnFocus&&typeof authReturnFocus.focus==="function")authReturnFocus.focus(); }
@@ -60,7 +60,8 @@ async function render(p){
  try{
   let b="";
   if(p==="Overview")b=await overview();
-  else if(["My courses","GED study plan","Academic programs","GED programs"].includes(p))b=await courses();
+  else if(["My courses","Course catalogue","GED study plan","Academic programs","GED programs"].includes(p))b=await courses();
+   else if(p==="Course details")b=await courseContent();
   else if(["Class schedule","Live classes","Teaching schedule","Timetables","My classes","My GED classes"].includes(p))b=await classes();
   else if(["Assignments","Assignments & grading"].includes(p))b=await assignments();
   else if(["Attendance","Attendance register"].includes(p))b=await attendance();
@@ -103,11 +104,69 @@ async function overview(){
  return '<div class="portal-hero"><small>SECURE AUREVIA WORKSPACE</small><h2>Welcome, '+esc(profile.full_name||"AUREVIA member")+'.</h2><p>Your account is connected. Information shown here is restricted by your role.</p></div><div class="workspace-stats">'+stats.map(x=>'<div class="workspace-stat"><div class="stat-top">'+esc(x[0])+'</div><strong>'+x[1]+'</strong><small>Live database count</small></div>').join("")+'</div>'+panel("Recent activity",activity||empty("No activity yet."));
 }
 async function courses(){
- if(profile.role==="student"){const r=await db().from("enrollments").select("status,class_sections(title,courses(title,code))").eq("student_id",user.id);if(r.error)throw r.error;return panel("My enrolled courses",(r.data||[]).map(x=>row(x.class_sections?.courses?.title||x.class_sections?.title,x.class_sections?.courses?.code||"",x.status)).join("")||empty("No course enrollments yet."))}
- const r=profile.role==="management"?await db().from("courses").select("*").order("created_at",{ascending:false}):await db().from("class_sections").select("title,courses(title,code)").eq("teacher_id",user.id);if(r.error)throw r.error;
- let form=profile.role==="management"?'<form class="live-form" id="courseForm">'+field("Course code","code")+field("Course title","title")+field("Category","category")+'<label class="live-field">Description<textarea name="description"></textarea></label><label class="check-field"><input type="checkbox" name="is_published"> Publish course</label><button class="btn btn-green">Create course</button></form>':"";
- setTimeout(()=>bind("courseForm",async f=>{const v=formData(f);const q=await db().from("courses").insert({code:v.code,title:v.title,category:v.category,description:v.description||"",is_published:!!v.is_published,created_by:user.id});if(q.error)throw q.error;toast("Course created.");render(page)}),0);
- return form+panel("Course catalogue",(r.data||[]).map(x=>row(x.title||x.courses?.title,x.code||x.courses?.code||"","ACTIVE")).join("")||empty("No courses have been added."));
+ if(profile.role==="student"){
+  const [catalog,owned]=await Promise.all([
+   db().from("courses").select("id,code,title,title_dari,description,description_dari,level,category,access_type,price_amount,currency,ged_subject_id").eq("is_published",true).order("category").order("title"),
+   db().from("enrollments").select("id,course_id,status").eq("student_id",user.id)
+  ]);
+  if(catalog.error)throw catalog.error;if(owned.error)throw owned.error;
+  const registrations=new Map((owned.data||[]).map(x=>[x.course_id,x]));
+  const cards=(catalog.data||[]).map(c=>{
+   const e=registrations.get(c.id),fee=c.access_type==="free"?"FREE":c.price_amount!=null?esc(c.currency)+" "+esc(c.price_amount):"FEE SET BY MANAGEMENT";
+   const state=e?e.status==="active"?"ENROLLED":e.status==="pending"?"AWAITING PAYMENT":nice(e.status).toUpperCase():"";
+   const action=e?'<span class="activity-tag">'+esc(state)+'</span>':'<button class="btn btn-green" type="button" data-enroll-course="'+c.id+'">'+(c.access_type==="free"?"Enrol free course":"Register for course")+'</button>';
+   return '<article class="catalog-card"><div class="catalog-card-top"><span class="activity-tag">'+esc(c.category||"AUREVIA COURSE")+'</span><span class="catalog-price">'+fee+'</span></div><h3><span class="en">'+esc(c.title)+'</span><span class="prs">'+esc(c.title_dari||c.title)+'</span></h3><p><span class="en">'+esc(c.description)+'</span><span class="prs">'+esc(c.description_dari||c.description)+'</span></p><div class="catalog-meta">'+esc(c.code)+' · '+esc(c.level||"All levels")+'</div><div class="catalog-action">'+action+'<button class="activity-tag" type="button" data-course-content="'+c.id+'">COURSE DETAILS</button>'+(e&&e.status==="pending"?'<small>Management will issue your course invoice. Live classes unlock after full payment is verified.</small>':"")+'</div></article>';
+  }).join("")||empty("Courses are being prepared. Please check again soon.");
+  const my=(owned.data||[]).map(e=>{const c=(catalog.data||[]).find(x=>x.id===e.course_id);return c?row(c.title,c.code,nice(e.status)):""}).join("")||empty("You have not registered for a course yet.");
+  return '<div class="catalog-intro"><h2 class="workspace-page-title">Explore AUREVIA courses</h2><p class="workspace-page-intro">Browse the available programmes and register. Paid courses unlock live classes after management verifies your payment.</p></div><div class="catalog-grid">'+cards+'</div>'+panel("My registrations",my);
+ }
+ const r=profile.role==="management"?await db().from("courses").select("*").order("created_at",{ascending:false}):await db().from("class_sections").select("title,courses(id,title,code)").eq("teacher_id",user.id);
+ if(r.error)throw r.error;
+ let form=profile.role==="management"?'<form class="live-form" id="courseForm"><h3>Create a course</h3>'+field("Course code","code")+field("Course title","title")+field("Course title (Dari)","title_dari")+field("Level","level")+field("Category","category")+'<label class="live-field">Description<textarea name="description" required></textarea></label><label class="live-field">Description (Dari)<textarea name="description_dari"></textarea></label><label class="live-field">Access type<select name="access_type"><option value="paid" selected>Paid — payment required for live classes</option><option value="free">Free</option></select></label><div class="form-pair">'+'<label class="live-field">Fee amount (optional)<input name="price_amount" type="number" min="0" step="0.01"></label>'+'<label class="live-field">Currency<select name="currency"><option value="USD">USD</option><option value="AFN">AFN</option></select></label></div><label class="check-field"><input type="checkbox" name="is_published" checked> Publish course and open registration</label><button class="btn btn-green">Create course</button></form>':"";
+ setTimeout(()=>bind("courseForm",async f=>{
+  const v=formData(f),q=await db().from("courses").insert({code:v.code.trim().toUpperCase(),title:v.title,title_dari:v.title_dari||"",description_dari:v.description_dari||"",level:v.level||null,category:v.category||"General",description:v.description||"",access_type:v.access_type||"paid",price_amount:v.price_amount?Number(v.price_amount):null,currency:v.currency||"USD",is_published:!!v.is_published,created_by:user.id}).select("id").single();
+  if(q.error)throw q.error;
+  const section=await db().from("class_sections").insert({course_id:q.data.id,title:"Open enrolment",is_open:true});
+  if(section.error){toast("Course created, but its enrolment section could not be opened: "+section.error.message);return}
+  toast("Course created with an open registration section.");render(page);
+ }),0);
+ const rows=profile.role==="management"?(r.data||[]).map(x=>'<div class="activity-row"><div class="activity-copy"><b>'+esc(x.title)+'</b><small>'+esc(x.code)+' · '+esc(x.category||"")+' · '+esc((x.access_type||"paid").toUpperCase())+'</small></div><button class="activity-tag" type="button" data-course-content="'+x.id+'">MANAGE CONTENT</button></div>').join(""):(r.data||[]).map(x=>'<div class="activity-row"><div class="activity-copy"><b>'+esc(x.courses?.title||x.title)+'</b><small>'+esc(x.courses?.code||"")+'</small></div>'+(x.courses?.id?'<button class="activity-tag" type="button" data-course-content="'+x.courses.id+'">VIEW CONTENT</button>':"")+'</div>').join("");
+ return form+panel("Course catalogue",rows.join("")||empty("No courses have been added."));
+}
+
+async function courseContent(){
+ if(!selectedCourseId)return panel("Course details",empty("Choose a course from the catalogue first."));
+ const q=await db().from("courses").select("id,code,title,title_dari,description,description_dari,ged_subject_id,access_type,price_amount,currency").eq("id",selectedCourseId).single();
+ if(q.error)throw q.error;
+ const c=q.data;
+ let lessons=[],locked=false,courseLessonForm="";
+ if(profile.role==="student"){
+  const er=await db().from("enrollments").select("id,status").eq("student_id",user.id).eq("course_id",c.id).maybeSingle();
+  if(er.error)throw er.error;
+  locked=!er.data||er.data.status!=="active";
+ }
+ if(c.ged_subject_id){
+  const r=await db().from("ged_lessons").select("id,title_en,title_dari,summary_en,summary_dari,content_en,content_dari,estimated_minutes,sort_order").eq("subject_id",c.ged_subject_id).eq("is_published",true).order("sort_order");
+  if(r.error)throw r.error;lessons=r.data||[];
+ }else if(c.code==="GED-COMPLETE"){
+  const r=await db().from("ged_lessons").select("id,title_en,title_dari,summary_en,summary_dari,content_en,content_dari,estimated_minutes,sort_order,ged_subjects(title_en,title_dari,code)").eq("is_published",true).order("sort_order");
+  if(r.error)throw r.error;lessons=r.data||[];
+ }
+ if(!locked){
+  const r=await db().from("course_lessons").select("id,title_en,title_dari,summary_en,summary_dari,content_en,content_dari,estimated_minutes,sort_order").eq("course_id",c.id).eq("is_published",true).order("sort_order");
+  if(r.error)throw r.error;lessons=lessons.concat(r.data||[]);
+ }
+ if(profile.role!=="student"){
+  courseLessonForm='<form class="live-form" id="courseLessonForm"><h3>Add a course lesson</h3>'+field("Lesson title (English)","title_en")+field("Lesson title (Dari)","title_dari")+'<label class="live-field">Summary (English)<textarea name="summary_en" required></textarea></label><label class="live-field">Summary (Dari)<textarea name="summary_dari" required></textarea></label><label class="live-field">Lesson content (English)<textarea name="content_en" rows="5" required></textarea></label><label class="live-field">Lesson content (Dari)<textarea name="content_dari" rows="5" required></textarea></label><div class="form-pair">'+field("Lesson order","sort_order","number")+field("Estimated minutes","estimated_minutes","number")+'</div><label class="check-field"><input type="checkbox" name="is_published" checked> Publish lesson</label><button class="btn btn-green">Save lesson</button></form>';
+  setTimeout(()=>bind("courseLessonForm",async f=>{const v=formData(f);const q=await db().from("course_lessons").insert({course_id:c.id,title_en:v.title_en,title_dari:v.title_dari,summary_en:v.summary_en,summary_dari:v.summary_dari,content_en:v.content_en,content_dari:v.content_dari,sort_order:Number(v.sort_order),estimated_minutes:Number(v.estimated_minutes||20),is_published:!!v.is_published,created_by:user.id});if(q.error)throw q.error;toast("Course lesson saved.");render("Course details")}),0);
+ }
+ const lessonCards=lessons.map(x=>'<article class="course-lesson"><div class="course-lesson-meta">'+esc(x.ged_subjects?.code||"COURSE LESSON")+' · '+esc(x.estimated_minutes)+' MIN</div><h3><span class="en">'+esc(x.title_en)+'</span><span class="prs">'+esc(x.title_dari)+'</span></h3><p><span class="en">'+esc(x.summary_en)+'</span><span class="prs">'+esc(x.summary_dari)+'</span></p><details><summary>Open lesson</summary><div class="course-lesson-content"><div class="en">'+esc(x.content_en).replace(/\n/g,"<br>")+'</div><div class="prs">'+esc(x.content_dari).replace(/\n/g,"<br>")+'</div></div></details></article>').join("");
+ const title='<h2 class="workspace-page-title"><span class="en">'+esc(c.title)+'</span><span class="prs">'+esc(c.title_dari||c.title)+'</span></h2><p class="workspace-page-intro"><span class="en">'+esc(c.description)+'</span><span class="prs">'+esc(c.description_dari||c.description)+'</span></p>';
+ const back='<button class="btn btn-outline" type="button" onclick="ruyaNavigate(\'Course catalogue\')">← Back to course catalogue</button>';
+ const body=locked&& !c.ged_subject_id&&c.code!=="GED-COMPLETE"
+  ?'<p class="record-note">Register for this course and complete the payment verification process to unlock its lessons and live sessions.</p>'
+  :lessonCards||'<p class="record-note">The course outline is published. Detailed lessons and activities for this programme are being prepared; use the library for supporting study materials in the meantime.</p>';
+ return back+courseLessonForm+panel("Course overview",title+body);
 }
 async function classes(){
  let sections=[];
@@ -154,11 +213,32 @@ async function attendance(){
  return form+panel("Attendance records",(r.data||[]).map(x=>row(x.class_sessions?.title||"Class session",date(x.class_sessions?.starts_at||x.marked_at),nice(x.status))).join("")||empty("No attendance records yet."));
 }
 async function library(){
- const r=await db().from("library_resources").select("*").order("created_at",{ascending:false});if(r.error)throw r.error;
- let form=profile.role!=="student"?'<form class="live-form" id="resourceForm">'+field("Resource title","title")+field("Category","category")+'<label class="live-field">Description<textarea name="description"></textarea></label><label class="live-field">External URL (optional)<input name="external_url" type="url"></label><label class="live-field">Or upload a file (up to 25 MB)<input name="resource_file" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.mp3,.mp4,.txt"></label><label class="live-field">Visibility<select name="visibility"><option value="authenticated">All signed-in users</option><option value="staff">Staff only</option><option value="public">Public</option></select></label><button class="btn btn-green">Add resource</button></form>':"";
- setTimeout(()=>bind("resourceForm",async f=>{const v=formData(f),file=v.resource_file;let path=null;if(file&&file.size){if(file.size>26214400)throw Error("The file must be 25 MB or smaller.");const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");path="library/"+user.id+"/"+Date.now()+"_"+safe;const up=await db().storage.from("ruya-private").upload(path,file,{contentType:file.type||"application/octet-stream",upsert:false});if(up.error)throw up.error}if(!path&&!v.external_url)throw Error("Add an external URL or upload a file.");const q=await db().from("library_resources").insert({title:v.title,category:v.category,description:v.description||"",external_url:v.external_url||null,storage_path:path,visibility:v.visibility,uploaded_by:user.id,resource_type:path?"file":"link"});if(q.error)throw q.error;toast("Resource added.");render(page)}),0);
- const list=(r.data||[]).map(x=>'<div class="activity-row"><div class="activity-icon">▧</div><div class="activity-copy"><b>'+esc(x.title)+'</b><small>'+esc(x.category)+' · '+esc(x.description)+'</small></div>'+(x.external_url?'<a class="activity-tag" href="'+esc(x.external_url)+'" target="_blank" rel="noopener">OPEN ↗</a>':x.storage_path?'<button class="activity-tag" data-download-path="'+esc(x.storage_path)+'">DOWNLOAD</button>':'')+'</div>').join("");
- return form+panel("Learning library",list||empty("The library is waiting for its first resources."));
+ const r=await db().from("library_resources").select("id,title,description,category,resource_type,storage_path,external_url,visibility,languages,course_id").order("category").order("title");
+ if(r.error)throw r.error;
+ let form="";
+ if(profile.role!=="student"){
+  const cr=await db().from("courses").select("id,title").order("title");if(cr.error)throw cr.error;
+  form='<form class="live-form" id="resourceForm"><h3>Add a learning resource</h3>'+field("Resource title","title")+field("Category / subject","category")+'<label class="live-field">Description<textarea name="description"></textarea></label><label class="live-field">Language<select name="language"><option>English</option><option>Dari</option><option>Pashto</option><option>Persian</option><option>Arabic</option><option>Multilingual</option></select></label><label class="live-field">Related course (optional)<select name="course_id"><option value="">General library resource</option>'+cr.data.map(x=>'<option value="'+x.id+'">'+esc(x.title)+'</option>').join("")+'</select></label><label class="live-field">External HTTPS URL (optional)<input name="external_url" type="url" placeholder="https://…"></label><label class="live-field">Or upload a file (up to 25 MB)<input name="resource_file" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.mp3,.mp4,.txt"></label><label class="live-field">Visibility<select name="visibility"><option value="public">Public — everyone</option><option value="authenticated">All signed-in learners</option><option value="enrolled">Enrolled learners of selected course</option><option value="staff">Staff only</option></select></label><button class="btn btn-green">Publish resource</button></form>';
+  setTimeout(()=>bind("resourceForm",async f=>{
+   const v=formData(f),file=v.resource_file;let path=null;
+   if(file&&file.size){if(file.size>26214400)throw Error("The file must be 25 MB or smaller.");const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");path="library/"+user.id+"/"+Date.now()+"_"+safe;const up=await db().storage.from("ruya-private").upload(path,file,{contentType:file.type||"application/octet-stream",upsert:false});if(up.error)throw up.error}
+   if(!path&&!v.external_url)throw Error("Add an external HTTPS URL or upload a file.");
+   if(v.external_url&&!/^https:\/\//i.test(v.external_url))throw Error("Use a secure HTTPS URL.");
+   if(v.visibility==="enrolled"&&!v.course_id)throw Error("Choose the course whose enrolled learners may access this resource.");
+   const languages=v.language==="Multilingual"?["English","Dari","Pashto"]:[v.language||"English"];
+   const q=await db().from("library_resources").insert({title:v.title,category:v.category,description:v.description||"",external_url:v.external_url||null,storage_path:path,visibility:v.visibility,course_id:v.course_id||null,languages,uploaded_by:user.id,resource_type:path?"file":"link"});
+   if(q.error)throw q.error;toast("Resource published to the library.");render(page);
+  }),0);
+ }
+ const categories=[...new Set((r.data||[]).map(x=>x.category).filter(Boolean))].sort();
+ const controls='<div class="library-tools"><input id="portalLibrarySearch" type="search" placeholder="Search titles, subjects or descriptions"><select id="portalLibraryCategory"><option value="">All categories</option>'+categories.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join("")+'</select><select id="portalLibraryLanguage"><option value="">All languages</option>'+["English","Dari","Pashto","Persian","Arabic"].map(x=>'<option value="'+x+'">'+x+'</option>').join("")+'</select></div><div id="portalLibraryResults" class="library-results"></div>';
+ const draw=()=>{
+  const q=($("portalLibrarySearch")?.value||"").trim().toLowerCase(),cat=$("portalLibraryCategory")?.value||"",lang=$("portalLibraryLanguage")?.value||"";
+  const items=(r.data||[]).filter(x=>(!q||(x.title+" "+x.description+" "+x.category).toLowerCase().includes(q))&&(!cat||x.category===cat)&&(!lang||(x.languages||["English"]).includes(lang)));
+  $("portalLibraryResults").innerHTML=items.map(x=>'<article class="library-resource-card"><div class="library-resource-icon">▤</div><div class="library-resource-copy"><b>'+esc(x.title)+'</b><p>'+esc(x.description)+'</p><small>'+esc(x.category)+' · '+esc((x.languages||["English"]).join(" / "))+' · '+esc(nice(x.resource_type))+'</small></div><div class="library-resource-action">'+(x.external_url?'<a class="activity-tag" href="'+esc(x.external_url)+'" target="_blank" rel="noopener noreferrer">OPEN ↗</a>':x.storage_path?'<button class="activity-tag" type="button" data-download-path="'+esc(x.storage_path)+'">DOWNLOAD</button>':'')+'</div></article>').join("")||empty("No resources match these filters. Try another search or language.");
+ };
+ setTimeout(()=>{["portalLibrarySearch","portalLibraryCategory","portalLibraryLanguage"].forEach(id=>$(id)?.addEventListener(id==="portalLibrarySearch"?"input":"change",draw));draw()},0);
+ return form+panel("AUREVIA learning library",'<p class="record-note">Search and filter study materials by subject and language. Open external resources or securely download uploaded files.</p>'+controls);
 }
 async function people(){
  const [r,s]=await Promise.all([db().from("profiles").select("id,email,full_name,role,is_active").order("created_at",{ascending:false}),db().from("class_sections").select("id,title,courses(title)")]);if(r.error)throw r.error;if(s.error)throw s.error;
@@ -245,29 +325,40 @@ async function communityChat(){
 }
 async function fees(){
  if(profile.role==="management"){
-  const [students,inv,pay]=await Promise.all([
+  const [students,inv,pay,pendingEnrollments]=await Promise.all([
    db().from("profiles").select("id,full_name,email").eq("role","student").eq("is_active",true).order("full_name"),
-   db().from("fee_invoices").select("id,title,billing_period,amount,currency,due_date,status,student_id,profiles!fee_invoices_student_id_fkey(full_name,email)").order("due_date",{ascending:false}),
-   db().from("fee_payments").select("id,invoice_id,student_id,amount,currency,payment_method,transaction_reference,verification_status,paid_at,profiles!fee_payments_student_id_fkey(full_name,email)").order("created_at",{ascending:false})
+   db().from("fee_invoices").select("id,title,billing_period,amount,currency,due_date,status,student_id,course_id,enrollment_id,courses(title),profiles!fee_invoices_student_id_fkey(full_name,email)").order("due_date",{ascending:false}),
+   db().from("fee_payments").select("id,invoice_id,student_id,amount,currency,payment_method,transaction_reference,verification_status,paid_at,profiles!fee_payments_student_id_fkey(full_name,email)").order("created_at",{ascending:false}),
+   db().from("enrollments").select("id,student_id,course_id,profiles(full_name,email),courses(title)").eq("status","pending").order("enrolled_at",{ascending:false})
   ]);
-  for(const x of [students,inv,pay])if(x.error)throw x.error;
-  const form='<form class="live-form" id="invoiceForm"><label class="live-field">Student<select name="student_id" required>'+students.data.map(x=>'<option value="'+x.id+'">'+esc(x.full_name||x.email)+'</option>').join("")+'</select></label>'+field("Invoice title","title")+field("Billing period (e.g. November 2026)","billing_period")+'<div class="form-pair">'+field("Amount","amount","number")+'<label class="live-field">Currency<select name="currency"><option value="AFN">AFN</option><option value="USD">USD</option></select></label></div><label class="live-field">Due date<input name="due_date" type="date" required></label><label class="live-field">Description<textarea name="description"></textarea></label><button class="btn btn-green">Create fee invoice</button></form>';
-  setTimeout(()=>bind("invoiceForm",async f=>{const v=formData(f);const q=await db().from("fee_invoices").insert({student_id:v.student_id,title:v.title,billing_period:v.billing_period,amount:Number(v.amount),currency:v.currency,due_date:v.due_date,description:v.description||"",created_by:user.id});if(q.error)throw q.error;toast("Invoice created.");render("Fees & payments")}),0);
-  const invoices=(inv.data||[]).map(x=>row(x.profiles?.full_name||x.profiles?.email||"Student",x.title+" · "+x.currency+" "+x.amount+" · Due "+x.due_date,nice(x.status))).join("")||empty("No invoices created yet.");
+  for(const x of [students,inv,pay,pendingEnrollments])if(x.error)throw x.error;
+  const options=(pendingEnrollments.data||[]).map(x=>'<option value="'+x.id+'">'+esc(x.profiles?.full_name||x.profiles?.email||"Student")+' · '+esc(x.courses?.title||"Course")+'</option>').join("");
+  const form='<form class="live-form" id="invoiceForm"><h3>Create a fee invoice</h3><label class="live-field">Link to pending course registration (optional)<select name="enrollment_id"><option value="">General fee / choose student below</option>'+options+'</select></label><label class="live-field">Student<select name="student_id" required>'+students.data.map(x=>'<option value="'+x.id+'">'+esc(x.full_name||x.email)+'</option>').join("")+'</select></label>'+field("Invoice title","title")+field("Billing period (e.g. November 2026)","billing_period")+'<div class="form-pair">'+field("Amount","amount","number")+'<label class="live-field">Currency<select name="currency"><option value="AFN">AFN</option><option value="USD">USD</option></select></label></div><label class="live-field">Due date<input name="due_date" type="date" required></label><label class="live-field">Description<textarea name="description"></textarea></label><button class="btn btn-green">Create fee invoice</button></form>';
+  setTimeout(()=>bind("invoiceForm",async f=>{
+   const v=formData(f),enrollment=(pendingEnrollments.data||[]).find(x=>x.id===v.enrollment_id);
+   const q=await db().from("fee_invoices").insert({student_id:enrollment?.student_id||v.student_id,title:v.title,billing_period:v.billing_period,amount:Number(v.amount),currency:v.currency,due_date:v.due_date,description:v.description||"",course_id:enrollment?.course_id||null,enrollment_id:enrollment?.id||null,created_by:user.id});
+   if(q.error)throw q.error;toast(enrollment?"Course invoice created. The learner can submit payment proof.":"Fee invoice created.");render("Fees & payments");
+  }),0);
+  const invoices=(inv.data||[]).map(x=>row(x.profiles?.full_name||x.profiles?.email||"Student",(x.courses?.title?x.courses.title+" · ":"")+x.title+" · "+x.currency+" "+x.amount+" · Due "+x.due_date,nice(x.status))).join("")||empty("No invoices created yet.");
   const pending=(pay.data||[]).filter(x=>x.verification_status==="pending").map(x=>'<article class="live-record"><h4>'+esc(x.profiles?.full_name||x.profiles?.email||"Student")+' · '+esc(x.currency)+' '+esc(x.amount)+'</h4><p>'+esc(nice(x.payment_method))+' · '+esc(x.transaction_reference||"No reference")+'</p><small>Submitted '+esc(date(x.paid_at))+'</small><div class="dash-actions"><button class="btn btn-green" data-verify-payment="'+x.id+'" data-invoice="'+x.invoice_id+'">Verify payment</button><button class="btn btn-outline" data-reject-payment="'+x.id+'">Reject</button></div></article>').join("")||empty("No payments awaiting verification.");
   return form+panel("Fee invoices",invoices)+panel("Payment verification",pending);
  }
- const r=await db().from("fee_invoices").select("id,title,description,billing_period,amount,currency,due_date,status,fee_payments(id,amount,currency,payment_method,transaction_reference,verification_status,paid_at)").eq("student_id",user.id).order("due_date",{ascending:false});
+ const r=await db().from("fee_invoices").select("id,title,description,billing_period,amount,currency,due_date,status,course_id,courses(title),fee_payments(id,amount,currency,payment_method,transaction_reference,verification_status,paid_at)").eq("student_id",user.id).order("due_date",{ascending:false});
  if(r.error)throw r.error;
  const cards=(r.data||[]).map(x=>{
-  const paid=(x.fee_payments||[]).filter(p=>p.verification_status==="verified").reduce((s,p)=>s+Number(p.amount),0);
-  const remaining=Math.max(0,Number(x.amount)-paid);
+  const paid=(x.fee_payments||[]).filter(p=>p.verification_status==="verified").reduce((s,p)=>s+Number(p.amount),0),remaining=Math.max(0,Number(x.amount)-paid);
   const dueStatus=x.status==="pending"&&x.due_date<new Date().toISOString().slice(0,10)?"OVERDUE":nice(x.status).toUpperCase();
   const history=(x.fee_payments||[]).map(p=>'<small>'+esc(p.currency)+' '+esc(p.amount)+' · '+esc(nice(p.verification_status))+' · '+esc(date(p.paid_at))+'</small>').join("<br>");
   const form=x.status!=="paid"&&x.status!=="cancelled"?'<form class="live-form feePayForm" data-invoice-id="'+x.id+'"><div class="form-pair">'+field("Amount paid","amount","number")+'<label class="live-field">Payment method<select name="payment_method"><option value="cash">Cash</option><option value="bank_transfer">Bank transfer</option><option value="mobile_money">Mobile money</option><option value="other">Other</option></select></label></div>'+field("Transaction / receipt reference","transaction_reference")+'<button class="btn btn-green">Submit payment for verification</button></form>':"";
-  return '<article class="live-record fee-invoice"><div class="fee-head"><div><h4>'+esc(x.title)+'</h4><small>'+esc(x.billing_period)+' · Due '+esc(x.due_date)+'</small></div><span class="activity-tag">'+esc(dueStatus)+'</span></div><p>'+esc(x.description)+'</p><div class="fee-total"><b>'+esc(x.currency)+' '+esc(x.amount)+'</b><span>Paid: '+esc(paid.toFixed(2))+' · Remaining: '+esc(remaining.toFixed(2))+'</span></div>'+history+form+'</article>';
+  return '<article class="live-record fee-invoice"><div class="fee-head"><div><h4>'+esc(x.title)+'</h4><small>'+(x.courses?.title?esc(x.courses.title)+" · ":"")+esc(x.billing_period)+' · Due '+esc(x.due_date)+'</small></div><span class="activity-tag">'+esc(dueStatus)+'</span></div><p>'+esc(x.description)+'</p><div class="fee-total"><b>'+esc(x.currency)+' '+esc(x.amount)+'</b><span>Paid: '+esc(paid.toFixed(2))+' · Remaining: '+esc(remaining.toFixed(2))+'</span></div>'+history+form+'</article>';
  }).join("")||empty("No fee invoices have been assigned to your account.");
- setTimeout(()=>document.querySelectorAll(".feePayForm").forEach(f=>f.onsubmit=async e=>{e.preventDefault();const v=formData(f);const invoice=(r.data||[]).find(x=>x.id===f.dataset.invoiceId);const amount=Number(v.amount);const alreadyPaid=(invoice?.fee_payments||[]).filter(p=>p.verification_status==="verified").reduce((s,p)=>s+Number(p.amount),0);const remaining=Math.max(0,Number(invoice?.amount||0)-alreadyPaid);if(!invoice||!Number.isFinite(amount)||amount<=0||amount>remaining)return toast("Enter an amount no greater than the remaining balance.");const q=await db().from("fee_payments").insert({invoice_id:invoice.id,student_id:user.id,amount,currency:invoice.currency,payment_method:v.payment_method,transaction_reference:v.transaction_reference||"",verification_status:"pending"});if(q.error)toast(q.error.message);else{toast("Payment submitted for management verification.");render("Fees & payments")}}),0);
+ setTimeout(()=>document.querySelectorAll(".feePayForm").forEach(f=>f.onsubmit=async e=>{
+  e.preventDefault();const v=formData(f),invoice=(r.data||[]).find(x=>x.id===f.dataset.invoiceId),amount=Number(v.amount);
+  const alreadyPaid=(invoice?.fee_payments||[]).filter(p=>p.verification_status==="verified").reduce((s,p)=>s+Number(p.amount),0),remaining=Math.max(0,Number(invoice?.amount||0)-alreadyPaid);
+  if(!invoice||!Number.isFinite(amount)||amount<=0||amount>remaining)return toast("Enter an amount no greater than the remaining balance.");
+  const q=await db().from("fee_payments").insert({invoice_id:invoice.id,student_id:user.id,amount,currency:invoice.currency,payment_method:v.payment_method,transaction_reference:v.transaction_reference||"",verification_status:"pending"});
+  if(q.error)toast(q.error.message);else{toast("Payment submitted for management verification.");render("Fees & payments")}
+ }),0);
  return panel("My fee account",cards);
 }
 async function setupNotificationRealtime(){
@@ -321,7 +412,7 @@ async function records(){
  return panel("Academic records summary",'<div class="workspace-stats"><div class="workspace-stat"><div class="stat-top">Attendance entries</div><strong>'+a.data.length+'</strong></div><div class="workspace-stat"><div class="stat-top">Submissions</div><strong>'+b.data.length+'</strong></div><div class="workspace-stat"><div class="stat-top">Enrollments</div><strong>'+c.data.length+'</strong></div></div>')+termForm+panel("Academic terms",termRows);
 }
 document.addEventListener("click",async e=>{
- const cancelSession=e.target.closest("[data-delete-session]");if(cancelSession){if(!confirm("Cancel and remove this class session?"))return;const q=await db().from("class_sessions").delete().eq("id",cancelSession.dataset.deleteSession);if(q.error)toast(q.error.message);else{toast("Class session cancelled.");render(page)}return}
+ const courseDetails=e.target.closest("[data-course-content]");if(courseDetails){selectedCourseId=courseDetails.dataset.courseContent;render("Course details");return}const courseEnroll=e.target.closest("[data-enroll-course]");if(courseEnroll){courseEnroll.disabled=true;const q=await db().rpc("request_course_enrollment",{_course_id:courseEnroll.dataset.enrollCourse});if(q.error){toast(q.error.message);courseEnroll.disabled=false}else{toast("Registration received. Management will issue your course invoice; live classes unlock after payment is fully verified.");render(page)}return}const cancelSession=e.target.closest("[data-delete-session]");if(cancelSession){if(!confirm("Cancel and remove this class session?"))return;const q=await db().from("class_sessions").delete().eq("id",cancelSession.dataset.deleteSession);if(q.error)toast(q.error.message);else{toast("Class session cancelled.");render(page)}return}
  const verify=e.target.closest("[data-verify-payment]");if(verify){const id=verify.dataset.verifyPayment,invoiceId=verify.dataset.invoice;const q=await db().from("fee_payments").update({verification_status:"verified",recorded_by:user.id,verified_at:new Date().toISOString()}).eq("id",id);if(q.error)return toast(q.error.message);const [inv,paid]=await Promise.all([db().from("fee_invoices").select("amount").eq("id",invoiceId).single(),db().from("fee_payments").select("amount").eq("invoice_id",invoiceId).eq("verification_status","verified")]);if(inv.error||paid.error)return toast((inv.error||paid.error).message);const sum=paid.data.reduce((s,x)=>s+Number(x.amount),0);const status=sum>=Number(inv.data.amount)?"paid":sum>0?"partial":"pending";const upd=await db().from("fee_invoices").update({status}).eq("id",invoiceId);if(upd.error)return toast(upd.error.message);toast("Payment verified.");render("Fees & payments");return}const reject=e.target.closest("[data-reject-payment]");if(reject){const q=await db().from("fee_payments").update({verification_status:"rejected",recorded_by:user.id,verified_at:new Date().toISOString()}).eq("id",reject.dataset.rejectPayment);if(q.error)toast(q.error.message);else{toast("Payment rejected.");render("Fees & payments")}return}const read=e.target.closest("[data-read-notification]");if(read){const q=await db().from("notifications").update({read_at:new Date().toISOString()}).eq("id",read.dataset.readNotification).eq("recipient_id",user.id);if(q.error)toast(q.error.message);else render("Notifications");return}const subject=e.target.closest("[data-public-subject]");if(subject){showPublicSubject(subject.dataset.publicSubject);return}const file=e.target.closest("[data-download-path]");if(file){const win=window.open("about:blank","_blank");const signed=await db().storage.from("ruya-private").createSignedUrl(file.dataset.downloadPath,60);if(signed.error){if(win)win.close();toast(signed.error.message)}else if(win)win.location.href=signed.data.signedUrl;else toast("Allow pop-ups to open this private file.");return}
  const a=e.target.closest("[data-active-id]");if(a){const q=await db().from("profiles").update({is_active:a.dataset.active!=="true"}).eq("id",a.dataset.activeId);if(q.error)toast(q.error.message);else render(page)}
 });
