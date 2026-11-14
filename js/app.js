@@ -362,7 +362,7 @@ async function communityChat(){
 async function fees(){
  if(profile.role==="management"){
   const [students,inv,pay,pendingEnrollments,coursesList]=await Promise.all([
-   db().from("profiles").select("id,full_name,email").eq("role","student").eq("is_active",true).order("full_name"),
+   db().from("profiles").select("id,full_name,email").eq("is_active",true).order("full_name"),
    db().from("fee_invoices").select("id,title,billing_period,amount,currency,due_date,status,student_id,course_id,enrollment_id,payment_instructions,courses(title),profiles!fee_invoices_student_id_fkey(full_name,email)").order("due_date",{ascending:false}),
    db().from("fee_payments").select("id,invoice_id,student_id,amount,currency,payment_method,transaction_reference,receipt_path,verification_status,paid_at,profiles!fee_payments_student_id_fkey(full_name,email)").order("created_at",{ascending:false}),
    db().from("enrollments").select("id,student_id,course_id,profiles(full_name,email),courses(title,price_amount,currency)").eq("status","pending").order("enrolled_at",{ascending:false}),
@@ -421,7 +421,7 @@ async function setupNotificationRealtime(){
   if(browserNotificationsEnabled&&"Notification" in window&&Notification.permission==="granted"){
    try{new Notification(payload.new.title,{body:payload.new.body,tag:payload.new.id})}catch(e){}
   }
-  if(page==="Notifications")render("Notifications");
+  if(page==="Notifications")render("Notifications");else if(page==="Live classes")render("Live classes");
  }).subscribe();
 }
 
