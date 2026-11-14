@@ -220,14 +220,15 @@ async function library(){
   const cr=await db().from("courses").select("id,title").order("title");if(cr.error)throw cr.error;
   form='<form class="live-form" id="resourceForm"><h3>Add a learning resource</h3>'+field("Resource title","title")+field("Category / subject","category")+'<label class="live-field">Description<textarea name="description"></textarea></label><label class="live-field">Language<select name="language"><option>English</option><option>Dari</option><option>Pashto</option><option>Persian</option><option>Arabic</option><option>Multilingual</option></select></label><label class="live-field">Related course (optional)<select name="course_id"><option value="">General library resource</option>'+cr.data.map(x=>'<option value="'+x.id+'">'+esc(x.title)+'</option>').join("")+'</select></label><label class="live-field">External HTTPS URL (optional)<input name="external_url" type="url" placeholder="https://…"></label><label class="live-field">Or upload a file (up to 25 MB)<input name="resource_file" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.mp3,.mp4,.txt"></label><label class="live-field">Visibility<select name="visibility"><option value="public">Public — everyone</option><option value="authenticated">All signed-in learners</option><option value="enrolled">Enrolled learners of selected course</option><option value="staff">Staff only</option></select></label><button class="btn btn-green">Publish resource</button></form>';
   setTimeout(()=>bind("resourceForm",async f=>{
-   const v=formData(f),file=v.resource_file;let path=null;
-   if(file&&file.size){if(file.size>26214400)throw Error("The file must be 25 MB or smaller.");const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");path="library/"+user.id+"/"+Date.now()+"_"+safe;const up=await db().storage.from("ruya-private").upload(path,file,{contentType:file.type||"application/octet-stream",upsert:false});if(up.error)throw up.error}
-   if(!path&&!v.external_url)throw Error("Add an external HTTPS URL or upload a file.");
-   if(v.external_url&&!/^https:\/\//i.test(v.external_url))throw Error("Use a secure HTTPS URL.");
+   const v=formData(f),file=v.resource_file,external=(v.external_url||"").trim();let path=null;
+   if(file&&file.size&&external)throw Error("Choose either an external URL or a file upload, not both.");
+   if((!file||!file.size)&&!external)throw Error("Add an external HTTPS URL or upload a file.");
+   if(external&&!/^https:\/\//i.test(external))throw Error("Use a secure HTTPS URL.");
    if(v.visibility==="enrolled"&&!v.course_id)throw Error("Choose the course whose enrolled learners may access this resource.");
+   if(file&&file.size){if(file.size>26214400)throw Error("The file must be 25 MB or smaller.");const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");path="library/"+user.id+"/"+Date.now()+"_"+safe;const up=await db().storage.from("ruya-private").upload(path,file,{contentType:file.type||"application/octet-stream",upsert:false});if(up.error)throw up.error}
    const languages=v.language==="Multilingual"?["English","Dari","Pashto"]:[v.language||"English"];
-   const q=await db().from("library_resources").insert({title:v.title,category:v.category,description:v.description||"",external_url:v.external_url||null,storage_path:path,visibility:v.visibility,course_id:v.course_id||null,languages,uploaded_by:user.id,resource_type:path?"file":"link"});
-   if(q.error)throw q.error;toast("Resource published to the library.");render(page);
+   const q=await db().from("library_resources").insert({title:v.title,category:v.category,description:v.description||"",external_url:external||null,storage_path:path,visibility:v.visibility,course_id:v.course_id||null,languages,uploaded_by:user.id,resource_type:path?"file":"link"});
+   if(q.error){if(path)await db().storage.from("ruya-private").remove([path]);throw q.error}toast("Resource published to the library.");render(page);
   }),0);
  }
  const categories=[...new Set((r.data||[]).map(x=>x.category).filter(Boolean))].sort();
