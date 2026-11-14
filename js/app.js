@@ -198,7 +198,13 @@ async function courseContent(){
  const back='<button class="btn btn-outline" type="button" onclick="ruyaNavigate(\'Course catalogue\')">← Back to course catalogue</button>';
  const access=locked?'<p class="record-note">You can review this complete syllabus before enrolling. Lesson access and live-class links unlock after your course invoice is paid and verified. Open Fees &amp; payments to review any invoice already issued.</p>':"";
  const lessonSection=locked?"":panel("Published course lessons",lessonCards||empty("Course lessons are being prepared."));
- return back+courseLessonForm+panel("Course overview",title+'<div class="course-fee-line"><b>Course fee:</b> '+fee+'</div>'+syllabus+access+lessonSection);
+ let learningTools="";
+ if(profile.role==="student"&&subject?.code==="MATH"){
+  learningTools=panel("Your mathematics learning tool",'<article class="course-detail-card learning-tool-card"><small>CONNECTED PRACTICE TOOL</small><h3>MathWise · Math &amp; Algebra Solver</h3><p>Use MathWise alongside your GED Mathematical Reasoning lessons to practise algebra and work through challenging mathematics problems step by step.</p><a class="btn btn-green" href="https://mathwisesolver.github.io/MathWise/" target="_blank" rel="noopener noreferrer">Open MathWise ↗</a><small>MathWise opens in a new tab. Return here to continue your GED course.</small></article>');
+ }else if(profile.role==="student"&&subject?.code==="RLA"){
+  learningTools=panel("Your English learning tool",'<article class="course-detail-card learning-tool-card"><small>CONNECTED VOCABULARY PRACTICE TOOL</small><h3>WordUp · English Vocabulary</h3><p>Build vocabulary, review useful words and practise regularly with WordUp alongside your GED Reasoning Through Language Arts reading and writing lessons.</p><a class="btn btn-green" href="https://wordupenglish.github.io/wordup/" target="_blank" rel="noopener noreferrer">Open WordUp ↗</a><small>WordUp opens in a new tab. Return here to continue your GED course.</small></article>');
+ }
+ return back+courseLessonForm+panel("Course overview",title+'<div class="course-fee-line"><b>Course fee:</b> '+fee+'</div>'+syllabus+access+lessonSection)+learningTools;
 }
 async function classes(){
  let sections=[];
