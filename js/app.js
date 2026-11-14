@@ -59,11 +59,11 @@ async function render(p){
  try{
   let b="";
   if(p==="Overview")b=await overview();
-  else if(p==="My courses"||p==="Academic programs")b=await courses();
-  else if(["Class schedule","Teaching schedule","Timetables","My classes"].includes(p))b=await classes();
+  else if(["My courses","GED study plan","Academic programs","GED programs"].includes(p))b=await courses();
+  else if(["Class schedule","Live classes","Teaching schedule","Timetables","My classes","My GED classes"].includes(p))b=await classes();
   else if(["Assignments","Assignments & grading"].includes(p))b=await assignments();
   else if(["Attendance","Attendance register"].includes(p))b=await attendance();
-  else if(["Learning library","Learning resources","Resources"].includes(p))b=await library();
+  else if(["Learning library","GED library","Learning resources","GED learning resources","Resources"].includes(p))b=await library();
   else if(p==="People & roles")b=await people();
   else if(p==="Announcements")b=await announcements();
   else if(p==="Messages")b=await messages();
