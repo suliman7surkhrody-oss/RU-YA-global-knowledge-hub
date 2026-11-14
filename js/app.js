@@ -367,41 +367,56 @@ async function communityChat(){
 }
 async function fees(){
  if(profile.role==="management"){
-  const [students,inv,pay,pendingEnrollments]=await Promise.all([
+  const [students,inv,pay,pendingEnrollments,coursesList]=await Promise.all([
    db().from("profiles").select("id,full_name,email").eq("role","student").eq("is_active",true).order("full_name"),
-   db().from("fee_invoices").select("id,title,billing_period,amount,currency,due_date,status,student_id,course_id,enrollment_id,courses(title),profiles!fee_invoices_student_id_fkey(full_name,email)").order("due_date",{ascending:false}),
-   db().from("fee_payments").select("id,invoice_id,student_id,amount,currency,payment_method,transaction_reference,verification_status,paid_at,profiles!fee_payments_student_id_fkey(full_name,email)").order("created_at",{ascending:false}),
-   db().from("enrollments").select("id,student_id,course_id,profiles(full_name,email),courses(title)").eq("status","pending").order("enrolled_at",{ascending:false})
+   db().from("fee_invoices").select("id,title,billing_period,amount,currency,due_date,status,student_id,course_id,enrollment_id,payment_instructions,courses(title),profiles!fee_invoices_student_id_fkey(full_name,email)").order("due_date",{ascending:false}),
+   db().from("fee_payments").select("id,invoice_id,student_id,amount,currency,payment_method,transaction_reference,receipt_path,verification_status,paid_at,profiles!fee_payments_student_id_fkey(full_name,email)").order("created_at",{ascending:false}),
+   db().from("enrollments").select("id,student_id,course_id,profiles(full_name,email),courses(title,price_amount,currency)").eq("status","pending").order("enrolled_at",{ascending:false}),
+   db().from("courses").select("id,title,price_amount,currency").eq("is_published",true).not("ged_subject_id","is",null).order("title")
   ]);
-  for(const x of [students,inv,pay,pendingEnrollments])if(x.error)throw x.error;
-  const options=(pendingEnrollments.data||[]).map(x=>'<option value="'+x.id+'">'+esc(x.profiles?.full_name||x.profiles?.email||"Student")+' · '+esc(x.courses?.title||"Course")+'</option>').join("");
-  const form='<form class="live-form" id="invoiceForm"><h3>Create a fee invoice</h3><label class="live-field">Link to pending course registration (optional)<select name="enrollment_id"><option value="">General fee / choose student below</option>'+options+'</select></label><label class="live-field">Student<select name="student_id" required>'+students.data.map(x=>'<option value="'+x.id+'">'+esc(x.full_name||x.email)+'</option>').join("")+'</select></label>'+field("Invoice title","title")+field("Billing period (e.g. November 2026)","billing_period")+'<div class="form-pair">'+field("Amount","amount","number")+'<label class="live-field">Currency<select name="currency"><option value="AFN">AFN</option><option value="USD">USD</option></select></label></div><label class="live-field">Due date<input name="due_date" type="date" required></label><label class="live-field">Description<textarea name="description"></textarea></label><button class="btn btn-green">Create fee invoice</button></form>';
-  setTimeout(()=>bind("invoiceForm",async f=>{
-   const v=formData(f),enrollment=(pendingEnrollments.data||[]).find(x=>x.id===v.enrollment_id);
-   const q=await db().from("fee_invoices").insert({student_id:enrollment?.student_id||v.student_id,title:v.title,billing_period:v.billing_period,amount:Number(v.amount),currency:v.currency,due_date:v.due_date,description:v.description||"",course_id:enrollment?.course_id||null,enrollment_id:enrollment?.id||null,created_by:user.id});
-   if(q.error)throw q.error;toast(enrollment?"Course invoice created. The learner can submit payment proof.":"Fee invoice created.");render("Fees & payments");
-  }),0);
+  for(const x of [students,inv,pay,pendingEnrollments,coursesList])if(x.error)throw x.error;
+  const options=(pendingEnrollments.data||[]).map(x=>'<option value="'+x.id+'">'+esc(x.profiles?.full_name||x.profiles?.email||"Student")+' · '+esc(x.courses?.title||"GED course")+'</option>').join("");
+  const form='<form class="live-form" id="invoiceForm"><h3>Issue a course invoice</h3><label class="live-field">Pending course registration<select name="enrollment_id" required><option value="">Select a registration</option>'+options+'</select></label><label class="live-field">Student<select name="student_id" required>'+students.data.map(x=>'<option value="'+x.id+'">'+esc(x.full_name||x.email)+'</option>').join("")+'</select></label>'+field("Invoice title","title")+field("Billing period","billing_period")+'<div class="form-pair">'+field("Amount","amount","number")+'<label class="live-field">Currency<select name="currency"><option value="AFN">AFN</option><option value="USD">USD</option></select></label></div><label class="live-field">Due date<input name="due_date" type="date" required></label><label class="live-field">Payment instructions<textarea name="payment_instructions" rows="3" placeholder="Tell the learner where and how to pay: bank details, mobile money number, cash office/location, or other approved method." required></textarea></label><label class="live-field">Additional invoice note<textarea name="description"></textarea></label><button class="btn btn-green">Issue invoice to learner</button></form>';
+  setTimeout(()=>{
+   const sel=$("invoiceForm")?.querySelector('[name="enrollment_id"]');
+   if(sel)sel.addEventListener("change",()=>{const en=(pendingEnrollments.data||[]).find(x=>x.id===sel.value);if(!en)return;const student=$("invoiceForm").querySelector('[name="student_id"]');student.value=en.student_id;const amount=$("invoiceForm").querySelector('[name="amount"]');if(en.courses?.price_amount!=null)amount.value=en.courses.price_amount;const currency=$("invoiceForm").querySelector('[name="currency"]');if(en.courses?.currency)currency.value=en.courses.currency;const title=$("invoiceForm").querySelector('[name="title"]');title.value="GED course fee — "+(en.courses?.title||"Course");});
+   bind("invoiceForm",async f=>{
+    const v=formData(f),enrollment=(pendingEnrollments.data||[]).find(x=>x.id===v.enrollment_id);
+    if(!enrollment)throw Error("Select a pending course registration.");
+    const amount=Number(v.amount);if(!Number.isFinite(amount)||amount<=0)throw Error("Enter a valid course fee amount.");
+    const q=await db().from("fee_invoices").insert({student_id:enrollment.student_id,title:v.title,billing_period:v.billing_period,amount,currency:v.currency,due_date:v.due_date,description:v.description||"",payment_instructions:v.payment_instructions,course_id:enrollment.course_id,enrollment_id:enrollment.id,created_by:user.id});
+    if(q.error)throw q.error;toast("Course invoice and payment instructions issued.");render("Fees & payments");
+   });
+  },0);
   const invoices=(inv.data||[]).map(x=>row(x.profiles?.full_name||x.profiles?.email||"Student",(x.courses?.title?x.courses.title+" · ":"")+x.title+" · "+x.currency+" "+x.amount+" · Due "+x.due_date,nice(x.status))).join("")||empty("No invoices created yet.");
-  const pending=(pay.data||[]).filter(x=>x.verification_status==="pending").map(x=>'<article class="live-record"><h4>'+esc(x.profiles?.full_name||x.profiles?.email||"Student")+' · '+esc(x.currency)+' '+esc(x.amount)+'</h4><p>'+esc(nice(x.payment_method))+' · '+esc(x.transaction_reference||"No reference")+'</p><small>Submitted '+esc(date(x.paid_at))+'</small><div class="dash-actions"><button class="btn btn-green" data-verify-payment="'+x.id+'" data-invoice="'+x.invoice_id+'">Verify payment</button><button class="btn btn-outline" data-reject-payment="'+x.id+'">Reject</button></div></article>').join("")||empty("No payments awaiting verification.");
-  return form+panel("Fee invoices",invoices)+panel("Payment verification",pending);
+  const pending=(pay.data||[]).filter(x=>x.verification_status==="pending").map(x=>'<article class="live-record"><h4>'+esc(x.profiles?.full_name||x.profiles?.email||"Student")+' · '+esc(x.currency)+' '+esc(x.amount)+'</h4><p>'+esc(nice(x.payment_method))+' · '+esc(x.transaction_reference||"No reference")+'</p>'+(x.receipt_path?'<button class="activity-tag" type="button" data-download-path="'+esc(x.receipt_path)+'">OPEN RECEIPT</button>':"")+'<small>Submitted '+esc(date(x.paid_at))+'</small><div class="dash-actions"><button class="btn btn-green" data-verify-payment="'+x.id+'" data-invoice="'+x.invoice_id+'">Verify payment</button><button class="btn btn-outline" data-reject-payment="'+x.id+'">Reject</button></div></article>').join("")||empty("No payments awaiting verification.");
+  const registrations=(pendingEnrollments.data||[]).map(x=>row(x.profiles?.full_name||x.profiles?.email||"Learner",x.courses?.title||"GED course",x.courses?.price_amount!=null?"FEE SET":"SET FEE")).join("")||empty("No pending course registrations.");
+  return form+panel("Pending course registrations — issue invoices here",registrations)+panel("Fee invoices",invoices)+panel("Payment verification",pending);
  }
- const r=await db().from("fee_invoices").select("id,title,description,billing_period,amount,currency,due_date,status,course_id,courses(title),fee_payments(id,amount,currency,payment_method,transaction_reference,verification_status,paid_at)").eq("student_id",user.id).order("due_date",{ascending:false});
- if(r.error)throw r.error;
+ const [r,er]=await Promise.all([
+  db().from("fee_invoices").select("id,title,description,payment_instructions,billing_period,amount,currency,due_date,status,course_id,enrollment_id,courses(title),fee_payments(id,amount,currency,payment_method,transaction_reference,receipt_path,verification_status,paid_at)").eq("student_id",user.id).order("due_date",{ascending:false}),
+  db().from("enrollments").select("id,course_id,courses(title,code)").eq("student_id",user.id).eq("status","pending")
+ ]);
+ if(r.error)throw r.error;if(er.error)throw er.error;
  const cards=(r.data||[]).map(x=>{
-  const paid=(x.fee_payments||[]).filter(p=>p.verification_status==="verified").reduce((s,p)=>s+Number(p.amount),0),remaining=Math.max(0,Number(x.amount)-paid);
+  const paid=(x.fee_payments||[]).filter(p=>p.verification_status==="verified").reduce((sum,p)=>sum+Number(p.amount),0),remaining=Math.max(0,Number(x.amount)-paid);
   const dueStatus=x.status==="pending"&&x.due_date<new Date().toISOString().slice(0,10)?"OVERDUE":nice(x.status).toUpperCase();
-  const history=(x.fee_payments||[]).map(p=>'<small>'+esc(p.currency)+' '+esc(p.amount)+' · '+esc(nice(p.verification_status))+' · '+esc(date(p.paid_at))+'</small>').join("<br>");
-  const form=x.status!=="paid"&&x.status!=="cancelled"?'<form class="live-form feePayForm" data-invoice-id="'+x.id+'"><div class="form-pair">'+field("Amount paid","amount","number")+'<label class="live-field">Payment method<select name="payment_method"><option value="cash">Cash</option><option value="bank_transfer">Bank transfer</option><option value="mobile_money">Mobile money</option><option value="other">Other</option></select></label></div>'+field("Transaction / receipt reference","transaction_reference")+'<button class="btn btn-green">Submit payment for verification</button></form>':"";
-  return '<article class="live-record fee-invoice"><div class="fee-head"><div><h4>'+esc(x.title)+'</h4><small>'+(x.courses?.title?esc(x.courses.title)+" · ":"")+esc(x.billing_period)+' · Due '+esc(x.due_date)+'</small></div><span class="activity-tag">'+esc(dueStatus)+'</span></div><p>'+esc(x.description)+'</p><div class="fee-total"><b>'+esc(x.currency)+' '+esc(x.amount)+'</b><span>Paid: '+esc(paid.toFixed(2))+' · Remaining: '+esc(remaining.toFixed(2))+'</span></div>'+history+form+'</article>';
- }).join("")||empty("No fee invoices have been assigned to your account.");
+  const history=(x.fee_payments||[]).map(p=>'<div class="payment-history-item"><small>'+esc(p.currency)+' '+esc(p.amount)+' · '+esc(nice(p.verification_status))+' · '+esc(date(p.paid_at))+'</small>'+(p.receipt_path?'<button class="activity-tag" type="button" data-download-path="'+esc(p.receipt_path)+'">VIEW RECEIPT</button>':"")+'</div>').join("");
+  const form=x.status!=="paid"&&x.status!=="cancelled"?'<form class="live-form feePayForm" data-invoice-id="'+x.id+'"><div class="form-pair">'+field("Amount paid","amount","number")+'<label class="live-field">Payment method<select name="payment_method"><option value="cash">Cash</option><option value="bank_transfer">Bank transfer</option><option value="mobile_money">Mobile money</option><option value="other">Other</option></select></label></div>'+field("Transaction / receipt reference","transaction_reference")+'<label class="live-field">Upload payment receipt (optional)<input name="receipt" type="file" accept=".pdf,.jpg,.jpeg,.png"></label><button class="btn btn-green">Submit payment for verification</button></form>':"";
+  return '<article class="live-record fee-invoice"><div class="fee-head"><div><h4>'+esc(x.title)+'</h4><small>'+(x.courses?.title?esc(x.courses.title)+" · ":"")+esc(x.billing_period)+' · Due '+esc(x.due_date)+'</small></div><span class="activity-tag">'+esc(dueStatus)+'</span></div><p>'+esc(x.description||"")+'</p><div class="fee-total"><b>'+esc(x.currency)+' '+esc(x.amount)+'</b><span>Paid: '+esc(paid.toFixed(2))+' · Remaining: '+esc(remaining.toFixed(2))+'</span></div><section class="payment-instructions"><b>How to pay</b><p>'+esc(x.payment_instructions||"Please contact AUREVIA management for payment instructions.")+'</p></section>'+history+form+'</article>';
+ }).join("")||empty("No fee invoices have been assigned to your account yet.");
+ const noInvoice=(er.data||[]).filter(e=>!(r.data||[]).some(i=>i.enrollment_id===e.id));
+ const waiting=noInvoice.map(e=>'<article class="pending-invoice-notice"><b>'+esc(e.courses?.title||"GED course")+'</b><span class="activity-tag">WAITING FOR INVOICE</span><p>Your registration has been received. Management has not issued your invoice yet. The amount, due date and payment instructions will appear here as soon as the invoice is issued. You do not need to submit a payment reference until you receive those details.</p></article>').join("");
  setTimeout(()=>document.querySelectorAll(".feePayForm").forEach(f=>f.onsubmit=async e=>{
   e.preventDefault();const v=formData(f),invoice=(r.data||[]).find(x=>x.id===f.dataset.invoiceId),amount=Number(v.amount);
-  const alreadyPaid=(invoice?.fee_payments||[]).filter(p=>p.verification_status==="verified").reduce((s,p)=>s+Number(p.amount),0),remaining=Math.max(0,Number(invoice?.amount||0)-alreadyPaid);
+  const alreadyPaid=(invoice?.fee_payments||[]).filter(p=>p.verification_status==="verified").reduce((sum,p)=>sum+Number(p.amount),0),remaining=Math.max(0,Number(invoice?.amount||0)-alreadyPaid);
   if(!invoice||!Number.isFinite(amount)||amount<=0||amount>remaining)return toast("Enter an amount no greater than the remaining balance.");
-  const q=await db().from("fee_payments").insert({invoice_id:invoice.id,student_id:user.id,amount,currency:invoice.currency,payment_method:v.payment_method,transaction_reference:v.transaction_reference||"",verification_status:"pending"});
-  if(q.error)toast(q.error.message);else{toast("Payment submitted for management verification.");render("Fees & payments")}
+  const file=v.receipt;let receiptPath=null;
+  if(file&&file.size){if(file.size>10485760)return toast("The receipt must be 10 MB or smaller.");const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");receiptPath="payments/"+user.id+"/"+Date.now()+"_"+safe;const up=await db().storage.from("ruya-private").upload(receiptPath,file,{contentType:file.type||"application/octet-stream",upsert:false});if(up.error)return toast(up.error.message);}
+  const q=await db().from("fee_payments").insert({invoice_id:invoice.id,student_id:user.id,amount,currency:invoice.currency,payment_method:v.payment_method,transaction_reference:v.transaction_reference||"",receipt_path:receiptPath,verification_status:"pending"});
+  if(q.error){if(receiptPath)await db().storage.from("ruya-private").remove([receiptPath]);toast(q.error.message)}else{toast("Payment proof submitted for management verification.");render("Fees & payments")}
  }),0);
- return panel("My fee account",cards);
+ return panel("My fee account",waiting+cards);
 }
 async function setupNotificationRealtime(){
  if(!db()||!user)return;
