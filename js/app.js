@@ -42,8 +42,8 @@ async function resetPassword(){const email=$("authEmail").value.trim();if(!db())
 async function loadProfile(u){
  const r=await db().from("profiles").select("*").eq("id",u.id).single();if(r.error)throw r.error;
  if(!r.data.is_active){await db().auth.signOut();throw Error("This account is inactive. Contact AUREVIA management.")}
- user=u;profile=r.data;setupNotificationRealtime();$("publicSite").style.display="none";$("dashboard").classList.add("show");
- $("roleLabel").textContent=nice(profile.role)+" workspace";$("dashUserName").textContent=profile.full_name||u.email;$("dashUserEmail").textContent=u.email;
+ user=u;profile=r.data;setupNotificationRealtime();$("publicSite").style.display="none";$("dashboard").classList.remove("role-management","role-teacher","role-student");$("dashboard").classList.add("show","role-"+profile.role);
+ $("roleLabel").textContent=profile.role==="management"?"ADMINISTRATOR CONSOLE":nice(profile.role)+" portal";const sideCaption=$("workspaceNav")?.previousElementSibling;if(sideCaption)sideCaption.textContent=profile.role==="management"?"ADMINISTRATION CONSOLE":profile.role==="teacher"?"TEACHING WORKSPACE":"YOUR LEARNING SPACE";$("dashUserName").textContent=profile.full_name||u.email;$("dashUserEmail").textContent=u.email;
  $("previewNote").textContent="SECURE WORKSPACE · "+u.email;const destination=pendingPage||"Overview";pendingPage=null;await render(destination);window.scrollTo(0,0)
 }
 function nav(){ $("workspaceNav").innerHTML=(menus[profile.role]||[]).map(n=>'<button class="workspace-nav '+(page===n?"active":"")+'" onclick="ruyaNavigate(\''+n.replace(/'/g,"\\'")+'\')"><span class="nav-ico">◆</span>'+esc(n)+'</button>').join("")}
@@ -56,6 +56,7 @@ function field(label,name,type){const t=type||"text";return '<label class="live-
 function formData(f){const o={};new FormData(f).forEach((v,k)=>o[k]=v);return o}
 function bind(id,fn){const f=$(id);if(f)f.onsubmit=async e=>{e.preventDefault();try{await fn(f)}catch(x){toast(x.message||"Action failed.")}}}
 async function render(p){
+ const allowedPages=menus[profile?.role]||[];if(!allowedPages.includes(p)&&p!=="Course details")p="Overview";
  if(p!=="Community chat"&&communityChannel){db().removeChannel(communityChannel);communityChannel=null;}page=p;nav();$("dashContent").innerHTML=shell(p,"Loading secure institutional records…",'<p class="loading-line">Connecting…</p>');
  try{
   let b="";
