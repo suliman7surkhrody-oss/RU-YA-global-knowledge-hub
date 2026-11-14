@@ -125,8 +125,30 @@ async function courses(){
  }
  const r=profile.role==="management"?await db().from("courses").select("*").eq("is_published",true).not("ged_subject_id","is",null).order("created_at",{ascending:false}):await db().from("class_sections").select("title,courses(id,title,code)").eq("teacher_id",user.id);
  if(r.error)throw r.error;
- let form=profile.role==="management"?'<form class="live-form" id="courseFeeForm"><h3>Set GED course fees</h3><label class="live-field">GED subject<select name="course_id">'+(r.data||[]).map(x=>'<option value="'+x.id+'">'+esc(x.title)+' · '+(x.price_amount!=null?esc(x.currency)+" "+esc(x.price_amount):"Fee not set")+'</option>').join("")+'</select></label>'+field("Course fee amount","price_amount","number")+'<label class="live-field">Currency<select name="currency"><option value="AFN">AFN</option><option value="USD">USD</option></select></label><button class="btn btn-green">Save course fee</button></form>':"";
- if(profile.role==="management")setTimeout(()=>bind("courseFeeForm",async f=>{const v=formData(f),amount=Number(v.price_amount);if(!Number.isFinite(amount)||amount<=0)throw Error("Enter a course fee greater than zero.");const q=await db().from("courses").update({price_amount:amount,currency:v.currency}).eq("id",v.course_id);if(q.error)throw q.error;toast("GED course fee updated.");render(page)}),0);
+ let form=profile.role==="management"?'<form class="live-form" id="courseFeeForm"><h3>Set GED course fees and payment details</h3><label class="live-field">GED subject<select name="course_id">'+(r.data||[]).map(x=>'<option value="'+x.id+'">'+esc(x.title)+' · '+(x.price_amount!=null?esc(x.currency)+" "+esc(x.price_amount):"Fee not set")+'</option>').join("")+'</select></label>'+field("Course fee amount","price_amount","number")+'<label class="live-field">Currency<select name="currency"><option value="AFN">AFN</option><option value="USD">USD</option></select></label><label class="live-field">Payment instructions<textarea name="payment_instructions" rows="3" placeholder="Bank details, mobile money number, cash office/location or approved payment method." required></textarea></label><label class="live-field">Payment due in days<input name="payment_due_days" type="number" min="1" max="30" value="7" required></label><button class="btn btn-green">Save fee and payment details</button></form>':"";
+ if(profile.role==="management")setTimeout(()=>bind("courseFeeForm",async f=>{
+  const v=formData(f),amount=Number(v.price_amount),days=Number(v.payment_due_days);
+  if(!Number.isFinite(amount)||amount<=0)throw Error("Enter a course fee greater than zero.");
+  if(!Number.isInteger(days)||days<1||days>30)throw Error("Payment due days must be between 1 and 30.");
+  if(!v.payment_instructions.trim())throw Error("Enter clear payment instructions for learners.");
+  const course=(r.data||[]).find(x=>x.id===v.course_id);if(!course)throw Error("Select a GED subject.");
+  const q=await db().from("courses").update({price_amount:amount,currency:v.currency,payment_instructions:v.payment_instructions.trim(),payment_due_days:days}).eq("id",v.course_id);
+  if(q.error)throw q.error;
+  const [pending,existing]=await Promise.all([
+   db().from("enrollments").select("id,student_id").eq("course_id",v.course_id).eq("status","pending"),
+   db().from("fee_invoices").select("enrollment_id").eq("course_id",v.course_id)
+  ]);
+  if(pending.error)throw pending.error;if(existing.error)throw existing.error;
+  const issued=new Set((existing.data||[]).map(x=>x.enrollment_id));
+  const due=new Date();due.setHours(12,0,0,0);due.setDate(due.getDate()+days);const dueDate=due.toISOString().slice(0,10);
+  let created=0;
+  for(const enrolment of pending.data||[]){
+   if(issued.has(enrolment.id))continue;
+   const invoice=await db().from("fee_invoices").insert({student_id:enrolment.student_id,title:"GED course fee — "+course.title,description:"Course registration fee for "+course.title,billing_period:new Intl.DateTimeFormat("en",{month:"long",year:"numeric"}).format(new Date()),amount,currency:v.currency,due_date:dueDate,status:"pending",course_id:v.course_id,enrollment_id:enrolment.id,payment_instructions:v.payment_instructions.trim(),created_by:user.id});
+   if(invoice.error)throw invoice.error;created++;
+  }
+  toast("Course fee saved. "+created+" pending invoice(s) issued.");render(page);
+ }),0);
  const rows=profile.role==="management"?(r.data||[]).map(x=>'<div class="activity-row"><div class="activity-copy"><b>'+esc(x.title)+'</b><small>'+esc(x.code)+' · '+esc(x.category||"")+' · '+esc((x.access_type||"paid").toUpperCase())+'</small></div><button class="activity-tag" type="button" data-course-content="'+x.id+'">MANAGE CONTENT</button></div>').join(""):(r.data||[]).map(x=>'<div class="activity-row"><div class="activity-copy"><b>'+esc(x.courses?.title||x.title)+'</b><small>'+esc(x.courses?.code||"")+'</small></div>'+(x.courses?.id?'<button class="activity-tag" type="button" data-course-content="'+x.courses.id+'">VIEW CONTENT</button>':"")+'</div>').join("");
  return form+panel("Course catalogue",rows.join("")||empty("No courses have been added."));
 }
