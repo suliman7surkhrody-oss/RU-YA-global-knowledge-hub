@@ -472,7 +472,7 @@ async function notifications(){
   toast(browserAllowed||!v.browser_notifications?"Notification settings saved.":"Browser permission was not granted; in-app reminders remain active.");
   setupNotificationRealtime();
 }),0);
- const list=(n.data||[]).map(x=>'<article class="notification-row '+(x.read_at?'read':'unread')+'"><div><b>'+esc(x.title)+'</b><p>'+esc(x.body)+'</p><small>'+esc(nice(x.notification_type))+' · '+esc(date(x.sent_at||x.scheduled_for))+'</small>'+(x.action_url?'<button class="activity-tag" type="button" data-open-live-classes>OPEN LIVE CLASSES ↗</button>':"")+'</div>'+(x.read_at?"":'<button class="activity-tag" data-read-notification="'+x.id+'">Mark read</button>')+'</article>').join("")||empty("You have no notifications yet.");
+ const list=(n.data||[]).map(x=>'<article class="notification-row '+(x.read_at?'read':'unread')+'"><div><b>'+esc(x.title)+'</b><p>'+esc(x.body)+'</p><small>'+esc(nice(x.notification_type))+' · '+esc(date(x.sent_at||x.scheduled_for))+'</small>'+(x.action_url?(x.action_url.includes("fees")?'<button class="activity-tag" type="button" data-open-fees>OPEN FEES &amp; PAYMENTS ↗</button>':'<button class="activity-tag" type="button" data-open-live-classes>OPEN LIVE CLASSES ↗</button>'):"")+'</div>'+(x.read_at?"":'<button class="activity-tag" data-read-notification="'+x.id+'">Mark read</button>')+'</article>').join("")||empty("You have no notifications yet.");
  return panel("Notification preferences",form)+panel("Your notifications",list);
 }
 
