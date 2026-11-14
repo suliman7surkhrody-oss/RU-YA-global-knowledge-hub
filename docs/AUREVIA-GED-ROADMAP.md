@@ -37,11 +37,11 @@ The uploaded *1,001 GED Practice Questions For Dummies* book is a reference for 
 4. Add secure file upload and a public-resource storage workflow for licensed materials.
 5. Complete student/teacher/management end-to-end testing with test accounts.
 6. Add email delivery and optional push notifications for users who opt in.
-7. Choose and configure the live-class provider (embedded Jitsi or a selected meeting service).
+7. Configure Google OAuth and Google Calendar/Meet API access if automatic meeting creation and calendar sync are required.
 8. Review fee currency, payment channels, receipts and local operating policies.
 9. Test the full English/Dari interface on mobile and desktop before merging to the live site.
 
 ## Current operational notes
-- The notification scheduler creates in-app reminders. Browser alerts work while the site is open and permission has been granted. Email delivery is not connected yet.
-- Live-class records already support meeting URLs. The current workspace opens those links; embedded video requires a selected provider and configuration.
+- The notification scheduler creates daily homework, weekly class, monthly fee and per-session pre-class in-app reminders. The per-session job runs every five minutes and respects the learner's reminder preference. Browser alerts work while the site is open and permission has been granted. Email delivery is not connected yet.
+- Live classroom workspace supports class/section creation, teacher assignment, scheduled sessions, Google Meet/Jitsi/Zoom/Teams/external meeting URLs, student join links, lesson-material links, recording links, session cancellation and attendance tracking. Google Meet meetings are created in Meet/Calendar and their links are pasted into AUREVIA; automatic Google Calendar/Meet provisioning still requires Google OAuth credentials and API consent. Video calls open in the provider rather than being embedded inside AUREVIA.
 - The public catalogue is live in the database, but only published lessons/resources appear to visitors.
