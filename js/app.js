@@ -105,17 +105,20 @@ async function overview(){
 }
 async function courses(){
  if(profile.role==="student"){
-  const [catalog,owned]=await Promise.all([
+  const [catalog,owned,invoices]=await Promise.all([
    db().from("courses").select("id,code,title,title_dari,description,description_dari,level,category,access_type,price_amount,currency,ged_subject_id").eq("is_published",true).not("ged_subject_id","is",null).order("category").order("title"),
-   db().from("enrollments").select("id,course_id,status").eq("student_id",user.id)
+   db().from("enrollments").select("id,course_id,status").eq("student_id",user.id),
+   db().from("fee_invoices").select("id,enrollment_id,status").eq("student_id",user.id)
   ]);
-  if(catalog.error)throw catalog.error;if(owned.error)throw owned.error;
+  if(catalog.error)throw catalog.error;if(owned.error)throw owned.error;if(invoices.error)throw invoices.error;
   const registrations=new Map((owned.data||[]).map(x=>[x.course_id,x]));
+  const invoicesByEnrollment=new Map((invoices.data||[]).filter(x=>x.enrollment_id).map(x=>[x.enrollment_id,x]));
   const cards=(catalog.data||[]).map(c=>{
    const e=registrations.get(c.id),fee=c.access_type==="free"?"FREE":c.price_amount!=null?esc(c.currency)+" "+esc(c.price_amount) :"FEE TO BE ANNOUNCED";
-   const state=e?e.status==="active"?"ENROLLED":e.status==="pending"?"WAITING FOR INVOICE":nice(e.status).toUpperCase():"";
+   const invoice=e?invoicesByEnrollment.get(e.id):null;
+   const state=e?e.status==="active"?"ENROLLED":e.status==="pending"?(invoice?"INVOICE ISSUED":"WAITING FOR INVOICE"):nice(e.status).toUpperCase():"";
    const action=e?(e.status==="pending"?'<button class="activity-tag" type="button" data-open-fees>VIEW PAYMENT STATUS</button>':'<span class="activity-tag">'+esc(state)+'</span>'):'<button class="btn btn-green" type="button" data-enroll-course="'+c.id+'">'+(c.access_type==="free"?"Enrol free course":"Register for course")+'</button>';
-   return '<article class="catalog-card"><div class="catalog-card-top"><span class="activity-tag">'+esc(c.category||"AUREVIA COURSE")+'</span><span class="catalog-price">'+fee+'</span></div><h3><span class="en">'+esc(c.title)+'</span><span class="prs">'+esc(c.title_dari||c.title)+'</span></h3><p><span class="en">'+esc(c.description)+'</span><span class="prs">'+esc(c.description_dari||c.description)+'</span></p><div class="catalog-meta">'+esc(c.code)+' · '+esc(c.level||"All levels")+'</div><div class="catalog-action">'+action+'<button class="activity-tag" type="button" data-course-content="'+c.id+'">COURSE DETAILS</button>'+(e&&e.status==="pending"?'<small>Your registration is recorded. The course invoice and payment instructions will appear under Fees &amp; payments when issued by management. Live classes unlock after full payment is verified.</small>':"")+'</div></article>';
+   return '<article class="catalog-card"><div class="catalog-card-top"><span class="activity-tag">'+esc(c.category||"AUREVIA COURSE")+'</span><span class="catalog-price">'+fee+'</span></div><h3><span class="en">'+esc(c.title)+'</span><span class="prs">'+esc(c.title_dari||c.title)+'</span></h3><p><span class="en">'+esc(c.description)+'</span><span class="prs">'+esc(c.description_dari||c.description)+'</span></p><div class="catalog-meta">'+esc(c.code)+' · '+esc(c.level||"All levels")+'</div><div class="catalog-action">'+action+'<button class="activity-tag" type="button" data-course-content="'+c.id+'">COURSE DETAILS</button>'+(e&&e.status==="pending"?'<small>'+(invoice?"Your invoice is ready. Open Fees &amp; payments to review the amount, due date and payment instructions.":"Your registration is recorded. Management has not issued your invoice yet; it will appear under Fees &amp; payments when ready.")+' Live classes unlock after full payment is verified.</small>':"")+'</div></article>';
   }).join("")||empty("Courses are being prepared. Please check again soon.");
   const my=(owned.data||[]).map(e=>{const c=(catalog.data||[]).find(x=>x.id===e.course_id);return c?row(c.title,c.code,nice(e.status)):""}).join("")||empty("You have not registered for a course yet.");
   return '<div class="catalog-intro"><h2 class="workspace-page-title">Explore AUREVIA courses</h2><p class="workspace-page-intro">Browse the available programmes and register. Paid courses unlock live classes after management verifies your payment.</p></div><div class="catalog-grid">'+cards+'</div>'+panel("My registrations",my);
