@@ -198,11 +198,35 @@ async function showPublicSubject(subjectId){
  box.innerHTML='<div class="public-lesson-head"><h3>Open lessons</h3><button class="activity-tag" type="button" onclick="document.getElementById(\'gedPublicLessons\').hidden=true">Close</button></div>'+(r.data||[]).map(x=>'<article class="public-lesson"><h4><span class="en">'+esc(x.title_en)+'</span><span class="prs">'+esc(x.title_dari)+'</span></h4><p><span class="en">'+esc(x.summary_en)+'</span><span class="prs">'+esc(x.summary_dari)+'</span></p><div class="lesson-content"><span class="en">'+esc(x.content_en).replace(/\\n/g,"<br>")+'</span><span class="prs">'+esc(x.content_dari).replace(/\\n/g,"<br>")+'</span></div><small>'+esc(x.estimated_minutes)+' min</small>'+(x.resource_url?'<a href="'+esc(x.resource_url)+'" target="_blank" rel="noopener">Open lesson ↗</a>':"")+'</article>').join("")||'<p class="empty-state">Lessons for this subject are being prepared. Please check again soon.</p>';
  box.scrollIntoView({behavior:"smooth",block:"start"});
 }
+const AUREVIA_LIBRARY_SOURCES=[
+ {title:"Darakht-e Danesh Open Library",description:"Afghanistan-focused open educational resources, books, lesson plans and learning materials across school and professional subjects.",languages:["English","Dari","Pashto"],category:"Education",url:"https://darakhtdanesh.org/en/library/",meta:"9,000+ resources · 127 subjects · open education"},
+ {title:"Project Gutenberg",description:"A large collection of public-domain ebooks, especially classic literature, history, philosophy and reference works.",languages:["English"],category:"Literature",url:"https://www.gutenberg.org/",meta:"79,000+ free ebooks · read and download"},
+ {title:"OpenStax",description:"Peer-reviewed, openly licensed textbooks for mathematics, science, social sciences, humanities and business.",languages:["English"],category:"Education",url:"https://openstax.org/subjects",meta:"Free online textbooks and PDF downloads"},
+ {title:"OEAC Digital Library",description:"A broad catalogue with Afghan literature, Pashto and Dari/Persian books, science, technology and Islamic-studies collections. Check each title's rights and source.",languages:["English","Dari","Pashto","Persian","Arabic"],category:"Reference",url:"https://library.oeacnetwork.com/",meta:"15,000+ catalogue entries · multiple languages"},
+ {title:"Afghan Youth Parliament Resource Library",description:"Curated educational and cultural resources, including Afghan history, Dari and Pashto literature, science and learning materials.",languages:["English","Dari","Pashto"],category:"History",url:"https://aypfrs.net/resource-library/",meta:"Curated Afghanistan-focused resources"},
+ {title:"Arthur Paul Afghanistan Collection",description:"University research collection with more than 20,000 titles and materials in over 20 languages, including Dari and Pashto.",languages:["English","Dari","Pashto","Uzbek"],category:"History",url:"https://digitalcommons.unomaha.edu/daripashtobooks/",meta:"20,000+ titles · research collection"},
+ {title:"Afghanistan Digital Library · NYU",description:"Digitised Afghan publications and historical materials; availability and reuse conditions vary by item.",languages:["English","Dari","Pashto"],category:"History",url:"https://afghanistandl.nyu.edu/",meta:"Historical Afghan publications"},
+ {title:"Wikisource",description:"A multilingual free library of texts and works that are in the public domain or shared under compatible free licences.",languages:["English","Dari","Pashto","Persian","Uzbek"],category:"Literature",url:"https://wikisource.org/",meta:"Multilingual free text library"},
+ {title:"QuranEnc",description:"Qur'an translations and downloadable translation files, including Uzbek translations. Review the translator and edition.",languages:["Arabic","Dari","Pashto","Uzbek","Persian","English"],category:"Islamic",url:"https://quranenc.com/en/home",meta:"Qur'an translations · downloadable formats"},
+ {title:"Open Library",description:"A global book catalogue with reading and controlled digital lending options; access depends on the title and lending rights.",languages:["English","Dari","Pashto","Persian","Uzbek"],category:"Reference",url:"https://openlibrary.org/",meta:"Global book catalogue"},
+ {title:"Internet Archive · Texts",description:"Digitised books and texts from libraries and partner collections. Some titles are downloadable; others are controlled digital loans.",languages:["English","Dari","Pashto","Persian","Uzbek"],category:"Reference",url:"https://archive.org/details/texts",meta:"Large digital archive · item-level access rules"},
+ {title:"Library of Congress · Country Studies",description:"Reference works on the history, society, geography and institutions of countries, including Afghanistan.",languages:["English"],category:"History",url:"https://www.loc.gov/collections/country-studies/",meta:"Research and country reference"}
+];
+function aureviaFilterLibrary(){
+ const q=(document.getElementById("librarySearch")?.value||"").trim().toLowerCase();
+ const lang=document.getElementById("libraryLanguage")?.value||"";
+ const cat=document.getElementById("libraryCategory")?.value||"";
+ const grid=document.getElementById("librarySourceGrid");if(!grid)return;
+ const filtered=AUREVIA_LIBRARY_SOURCES.filter(x=>(!q||(x.title+" "+x.description+" "+x.category+" "+x.languages.join(" ")).toLowerCase().includes(q))&&(!lang||x.languages.includes(lang))&&(!cat||x.category===cat));
+ grid.innerHTML=filtered.map(x=>'<a class="library-source" href="'+esc(x.url)+'" target="_blank" rel="noopener noreferrer"><span class="source-meta">'+esc(x.meta)+'</span><b>'+esc(x.title)+'</b><small>'+esc(x.description)+'</small><small>Languages: '+esc(x.languages.join(" · "))+'</small><span class="source-meta">OPEN COLLECTION ↗</span></a>').join("")||'<p class="empty-state">No collections match these filters. Try another language or subject.</p>';
+}
+window.aureviaFilterLibrary=aureviaFilterLibrary;
 async function loadPublicGedCatalog(){
  if(!db())return;
+ aureviaFilterLibrary();
  const [s,l]=await Promise.all([
   db().from("ged_subjects").select("id,code,title_en,title_dari,summary_en,summary_dari,exam_duration_minutes,topics").eq("is_published",true).order("sort_order"),
-  db().from("library_resources").select("id,title,description,category,external_url,resource_type").eq("visibility","public").order("created_at",{ascending:false}).limit(30)
+  db().from("library_resources").select("id,title,description,category,external_url,resource_type").eq("visibility","public").order("created_at",{ascending:false}).limit(1000)
  ]);
  const grid=$("gedSubjectGrid");
  if(grid){
