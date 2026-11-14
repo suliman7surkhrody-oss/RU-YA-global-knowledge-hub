@@ -51,7 +51,12 @@ const translations={
 "Publish message":"نشر پیام",
 "DELETE":"حذف",
 "Official community updates":"اطلاعیه‌های رسمی جامعه آموزشی",
-"OPEN LIVE CLASSES ↗":"رفتن به صنف‌های آنلاین ↗"
+"OPEN LIVE CLASSES ↗":"رفتن به صنف‌های آنلاین ↗",
+"Set GED course fees and payment details":"تعیین فیس و معلومات پرداخت کورس‌های GED",
+"Payment due in days":"مهلت پرداخت به روز",
+"Save fee and payment details":"ذخیره فیس و معلومات پرداخت",
+"INVOICE ISSUED":"صورتحساب صادر شده",
+"Course fee saved.":"فیس کورس ذخیره شد."
 };
 let language="en",observer=null,busy=false;
 const originals=new WeakMap();
