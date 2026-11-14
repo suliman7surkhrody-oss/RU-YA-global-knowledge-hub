@@ -420,8 +420,8 @@ async function fees(){
  }
  if(profile.role==="teacher"){
   const [learners,waivers]=await Promise.all([
-   db().from("enrollments").select("id,student_id,course_id,status,profiles(full_name,email),courses(title),class_sections!inner(title,teacher_id)").eq("class_sections.teacher_id",user.id).eq("status","pending").order("enrolled_at",{ascending:false}),
-   db().from("fee_waivers").select("id,enrollment_id,student_id,course_id,reason,created_at,profiles(full_name,email),courses(title)").eq("teacher_id",user.id).order("created_at",{ascending:false})
+   db().from("enrollments").select("id,student_id,course_id,status,profiles!fee_waivers_student_id_fkey(full_name,email),courses(title),class_sections!inner(title,teacher_id)").eq("class_sections.teacher_id",user.id).eq("status","pending").order("enrolled_at",{ascending:false}),
+   db().from("fee_waivers").select("id,enrollment_id,student_id,course_id,reason,created_at,profiles!fee_waivers_student_id_fkey(full_name,email),courses(title)").eq("teacher_id",user.id).order("created_at",{ascending:false})
   ]);
   if(learners.error)throw learners.error;if(waivers.error)throw waivers.error;
   const options=(learners.data||[]).map(x=>'<option value="'+x.id+'">'+esc(x.profiles?.full_name||x.profiles?.email||"Learner")+' · '+esc(x.courses?.title||"Course")+' · '+esc(x.class_sections?.title||"Class")+'</option>').join("");
