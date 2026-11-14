@@ -3,7 +3,7 @@
 const $=id=>document.getElementById(id), db=()=>window.ruyaSupabase;
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const nice=s=>String(s||"").replace(/[_-]/g," ").replace(/\b\w/g,c=>c.toUpperCase());
-let user=null,profile=null,page="Overview";
+let user=null,profile=null,page="Overview",selectedCourseId=null;
 const menus={student:["Overview","Course catalogue","Live classes","Assignments","Attendance","GED library","Community chat","Fees & payments","Notifications","Announcements","Messages"],teacher:["Overview","My GED classes","Teaching schedule","Assignments & grading","Attendance register","GED learning resources","Community chat","Notifications","Announcements","Messages"],management:["Overview","GED programs","People & roles","Timetables","Academic records","GED library","Community chat","Fees & payments","Notifications","Announcements","Messages"]};
 function toast(s){const e=$("toast");e.textContent=s;e.classList.add("show");setTimeout(()=>e.classList.remove("show"),3200)}
 let authSignup=false,authReturnFocus=null,recoveryMode=false,pendingPage=null;
@@ -61,6 +61,7 @@ async function render(p){
   let b="";
   if(p==="Overview")b=await overview();
   else if(["My courses","Course catalogue","GED study plan","Academic programs","GED programs"].includes(p))b=await courses();
+   else if(p==="Course details")b=await courseContent();
   else if(["Class schedule","Live classes","Teaching schedule","Timetables","My classes","My GED classes"].includes(p))b=await classes();
   else if(["Assignments","Assignments & grading"].includes(p))b=await assignments();
   else if(["Attendance","Attendance register"].includes(p))b=await attendance();
@@ -105,7 +106,7 @@ async function overview(){
 async function courses(){
  if(profile.role==="student"){
   const [catalog,owned]=await Promise.all([
-   db().from("courses").select("id,code,title,description,level,category,access_type,price_amount,currency").eq("is_published",true).order("category").order("title"),
+   db().from("courses").select("id,code,title,title_dari,description,description_dari,level,category,access_type,price_amount,currency,ged_subject_id").eq("is_published",true).order("category").order("title"),
    db().from("enrollments").select("id,course_id,status").eq("student_id",user.id)
   ]);
   if(catalog.error)throw catalog.error;if(owned.error)throw owned.error;
@@ -114,16 +115,16 @@ async function courses(){
    const e=registrations.get(c.id),fee=c.access_type==="free"?"FREE":c.price_amount!=null?esc(c.currency)+" "+esc(c.price_amount):"FEE SET BY MANAGEMENT";
    const state=e?e.status==="active"?"ENROLLED":e.status==="pending"?"AWAITING PAYMENT":nice(e.status).toUpperCase():"";
    const action=e?'<span class="activity-tag">'+esc(state)+'</span>':'<button class="btn btn-green" type="button" data-enroll-course="'+c.id+'">'+(c.access_type==="free"?"Enrol free course":"Register for course")+'</button>';
-   return '<article class="catalog-card"><div class="catalog-card-top"><span class="activity-tag">'+esc(c.category||"AUREVIA COURSE")+'</span><span class="catalog-price">'+fee+'</span></div><h3>'+esc(c.title)+'</h3><p>'+esc(c.description)+'</p><div class="catalog-meta">'+esc(c.code)+' · '+esc(c.level||"All levels")+'</div><div class="catalog-action">'+action+(e&&e.status==="pending"?'<small>Management will issue your course invoice. Live classes unlock after full payment is verified.</small>':"")+'</div></article>';
+   return '<article class="catalog-card"><div class="catalog-card-top"><span class="activity-tag">'+esc(c.category||"AUREVIA COURSE")+'</span><span class="catalog-price">'+fee+'</span></div><h3><span class="en">'+esc(c.title)+'</span><span class="prs">'+esc(c.title_dari||c.title)+'</span></h3><p><span class="en">'+esc(c.description)+'</span><span class="prs">'+esc(c.description_dari||c.description)+'</span></p><div class="catalog-meta">'+esc(c.code)+' · '+esc(c.level||"All levels")+'</div><div class="catalog-action">'+action+'<button class="activity-tag" type="button" data-course-content="'+c.id+'">COURSE DETAILS</button>'+(e&&e.status==="pending"?'<small>Management will issue your course invoice. Live classes unlock after full payment is verified.</small>':"")+'</div></article>';
   }).join("")||empty("Courses are being prepared. Please check again soon.");
   const my=(owned.data||[]).map(e=>{const c=(catalog.data||[]).find(x=>x.id===e.course_id);return c?row(c.title,c.code,nice(e.status)):""}).join("")||empty("You have not registered for a course yet.");
   return '<div class="catalog-intro"><h2 class="workspace-page-title">Explore AUREVIA courses</h2><p class="workspace-page-intro">Browse the available programmes and register. Paid courses unlock live classes after management verifies your payment.</p></div><div class="catalog-grid">'+cards+'</div>'+panel("My registrations",my);
  }
  const r=profile.role==="management"?await db().from("courses").select("*").order("created_at",{ascending:false}):await db().from("class_sections").select("title,courses(title,code)").eq("teacher_id",user.id);
  if(r.error)throw r.error;
- let form=profile.role==="management"?'<form class="live-form" id="courseForm"><h3>Create a course</h3>'+field("Course code","code")+field("Course title","title")+field("Level","level")+field("Category","category")+'<label class="live-field">Description<textarea name="description" required></textarea></label><label class="live-field">Access type<select name="access_type"><option value="paid" selected>Paid — payment required for live classes</option><option value="free">Free</option></select></label><div class="form-pair">'+field("Fee amount (optional)","price_amount","number")+'<label class="live-field">Currency<select name="currency"><option value="USD">USD</option><option value="AFN">AFN</option></select></label></div><label class="check-field"><input type="checkbox" name="is_published" checked> Publish course and open registration</label><button class="btn btn-green">Create course</button></form>':"";
+ let form=profile.role==="management"?'<form class="live-form" id="courseForm"><h3>Create a course</h3>'+field("Course code","code")+field("Course title","title")+field("Course title (Dari)","title_dari")+field("Level","level")+field("Category","category")+'<label class="live-field">Description<textarea name="description" required></textarea></label><label class="live-field">Description (Dari)<textarea name="description_dari"></textarea></label><label class="live-field">Access type<select name="access_type"><option value="paid" selected>Paid — payment required for live classes</option><option value="free">Free</option></select></label><div class="form-pair">'+field("Fee amount (optional)","price_amount","number")+'<label class="live-field">Currency<select name="currency"><option value="USD">USD</option><option value="AFN">AFN</option></select></label></div><label class="check-field"><input type="checkbox" name="is_published" checked> Publish course and open registration</label><button class="btn btn-green">Create course</button></form>':"";
  setTimeout(()=>bind("courseForm",async f=>{
-  const v=formData(f),q=await db().from("courses").insert({code:v.code.trim().toUpperCase(),title:v.title,level:v.level||null,category:v.category||"General",description:v.description||"",access_type:v.access_type||"paid",price_amount:v.price_amount?Number(v.price_amount):null,currency:v.currency||"USD",is_published:!!v.is_published,created_by:user.id}).select("id").single();
+  const v=formData(f),q=await db().from("courses").insert({code:v.code.trim().toUpperCase(),title:v.title,title_dari:v.title_dari||"",description_dari:v.description_dari||"",level:v.level||null,category:v.category||"General",description:v.description||"",access_type:v.access_type||"paid",price_amount:v.price_amount?Number(v.price_amount):null,currency:v.currency||"USD",is_published:!!v.is_published,created_by:user.id}).select("id").single();
   if(q.error)throw q.error;
   const section=await db().from("class_sections").insert({course_id:q.data.id,title:"Open enrolment",is_open:true});
   if(section.error){toast("Course created, but its enrolment section could not be opened: "+section.error.message);return}
@@ -131,6 +132,26 @@ async function courses(){
  }),0);
  const rows=profile.role==="management"?(r.data||[]).map(x=>row(x.title,x.code+" · "+(x.category||""),(x.access_type||"paid").toUpperCase())):(r.data||[]).map(x=>row(x.title||x.courses?.title,x.courses?.code||"","ACTIVE"));
  return form+panel("Course catalogue",rows.join("")||empty("No courses have been added."));
+}
+
+async function courseContent(){
+ if(!selectedCourseId)return panel("Course details",empty("Choose a course from the catalogue first."));
+ const q=await db().from("courses").select("id,code,title,title_dari,description,description_dari,ged_subject_id,access_type,price_amount,currency").eq("id",selectedCourseId).single();
+ if(q.error)throw q.error;
+ const c=q.data;
+ let lessons=[];
+ if(c.ged_subject_id){
+  const r=await db().from("ged_lessons").select("id,title_en,title_dari,summary_en,summary_dari,content_en,content_dari,estimated_minutes,sort_order").eq("subject_id",c.ged_subject_id).eq("is_published",true).order("sort_order");
+  if(r.error)throw r.error;lessons=r.data||[];
+ }else if(c.code==="GED-COMPLETE"){
+  const r=await db().from("ged_lessons").select("id,title_en,title_dari,summary_en,summary_dari,content_en,content_dari,estimated_minutes,sort_order,ged_subjects(title_en,title_dari,code)").eq("is_published",true).order("sort_order");
+  if(r.error)throw r.error;lessons=r.data||[];
+ }
+ const lessonCards=lessons.map(x=>'<article class="course-lesson"><div class="course-lesson-meta">'+esc(x.ged_subjects?.code||"GED LESSON")+' · '+esc(x.estimated_minutes)+' MIN</div><h3><span class="en">'+esc(x.title_en)+'</span><span class="prs">'+esc(x.title_dari)+'</span></h3><p><span class="en">'+esc(x.summary_en)+'</span><span class="prs">'+esc(x.summary_dari)+'</span></p><details><summary>Open lesson / مشاهده درس</summary><div class="course-lesson-content"><div class="en">'+esc(x.content_en).replace(/\n/g,"<br>")+'</div><div class="prs">'+esc(x.content_dari).replace(/\n/g,"<br>")+'</div></div></details></article>').join("");
+ const title='<h2 class="workspace-page-title"><span class="en">'+esc(c.title)+'</span><span class="prs">'+esc(c.title_dari||c.title)+'</span></h2><p class="workspace-page-intro"><span class="en">'+esc(c.description)+'</span><span class="prs">'+esc(c.description_dari||c.description)+'</span></p>';
+ const back='<button class="btn btn-outline" type="button" onclick="ruyaNavigate(\'Course catalogue\')">← Back to course catalogue</button>';
+ const body=lessonCards||'<p class="record-note">The course outline is published. Detailed lessons and activities for this programme are being prepared; use the library for supporting study materials in the meantime.</p>';
+ return back+panel("Course overview",title+body);
 }
 async function classes(){
  let sections=[];
@@ -376,7 +397,7 @@ async function records(){
  return panel("Academic records summary",'<div class="workspace-stats"><div class="workspace-stat"><div class="stat-top">Attendance entries</div><strong>'+a.data.length+'</strong></div><div class="workspace-stat"><div class="stat-top">Submissions</div><strong>'+b.data.length+'</strong></div><div class="workspace-stat"><div class="stat-top">Enrollments</div><strong>'+c.data.length+'</strong></div></div>')+termForm+panel("Academic terms",termRows);
 }
 document.addEventListener("click",async e=>{
- const courseEnroll=e.target.closest("[data-enroll-course]");if(courseEnroll){courseEnroll.disabled=true;const q=await db().rpc("request_course_enrollment",{_course_id:courseEnroll.dataset.enrollCourse});if(q.error){toast(q.error.message);courseEnroll.disabled=false}else{toast("Registration received. Management will issue your course invoice; live classes unlock after payment is fully verified.");render(page)}return}const cancelSession=e.target.closest("[data-delete-session]");if(cancelSession){if(!confirm("Cancel and remove this class session?"))return;const q=await db().from("class_sessions").delete().eq("id",cancelSession.dataset.deleteSession);if(q.error)toast(q.error.message);else{toast("Class session cancelled.");render(page)}return}
+ const courseDetails=e.target.closest("[data-course-content]");if(courseDetails){selectedCourseId=courseDetails.dataset.courseContent;render("Course details");return}const courseEnroll=e.target.closest("[data-enroll-course]");if(courseEnroll){courseEnroll.disabled=true;const q=await db().rpc("request_course_enrollment",{_course_id:courseEnroll.dataset.enrollCourse});if(q.error){toast(q.error.message);courseEnroll.disabled=false}else{toast("Registration received. Management will issue your course invoice; live classes unlock after payment is fully verified.");render(page)}return}const cancelSession=e.target.closest("[data-delete-session]");if(cancelSession){if(!confirm("Cancel and remove this class session?"))return;const q=await db().from("class_sessions").delete().eq("id",cancelSession.dataset.deleteSession);if(q.error)toast(q.error.message);else{toast("Class session cancelled.");render(page)}return}
  const verify=e.target.closest("[data-verify-payment]");if(verify){const id=verify.dataset.verifyPayment,invoiceId=verify.dataset.invoice;const q=await db().from("fee_payments").update({verification_status:"verified",recorded_by:user.id,verified_at:new Date().toISOString()}).eq("id",id);if(q.error)return toast(q.error.message);const [inv,paid]=await Promise.all([db().from("fee_invoices").select("amount").eq("id",invoiceId).single(),db().from("fee_payments").select("amount").eq("invoice_id",invoiceId).eq("verification_status","verified")]);if(inv.error||paid.error)return toast((inv.error||paid.error).message);const sum=paid.data.reduce((s,x)=>s+Number(x.amount),0);const status=sum>=Number(inv.data.amount)?"paid":sum>0?"partial":"pending";const upd=await db().from("fee_invoices").update({status}).eq("id",invoiceId);if(upd.error)return toast(upd.error.message);toast("Payment verified.");render("Fees & payments");return}const reject=e.target.closest("[data-reject-payment]");if(reject){const q=await db().from("fee_payments").update({verification_status:"rejected",recorded_by:user.id,verified_at:new Date().toISOString()}).eq("id",reject.dataset.rejectPayment);if(q.error)toast(q.error.message);else{toast("Payment rejected.");render("Fees & payments")}return}const read=e.target.closest("[data-read-notification]");if(read){const q=await db().from("notifications").update({read_at:new Date().toISOString()}).eq("id",read.dataset.readNotification).eq("recipient_id",user.id);if(q.error)toast(q.error.message);else render("Notifications");return}const subject=e.target.closest("[data-public-subject]");if(subject){showPublicSubject(subject.dataset.publicSubject);return}const file=e.target.closest("[data-download-path]");if(file){const win=window.open("about:blank","_blank");const signed=await db().storage.from("ruya-private").createSignedUrl(file.dataset.downloadPath,60);if(signed.error){if(win)win.close();toast(signed.error.message)}else if(win)win.location.href=signed.data.signedUrl;else toast("Allow pop-ups to open this private file.");return}
  const a=e.target.closest("[data-active-id]");if(a){const q=await db().from("profiles").update({is_active:a.dataset.active!=="true"}).eq("id",a.dataset.activeId);if(q.error)toast(q.error.message);else render(page)}
 });
