@@ -41,7 +41,7 @@ async function resetPassword(){const email=$("authEmail").value.trim();if(!db())
 async function loadProfile(u){
  const r=await db().from("profiles").select("*").eq("id",u.id).single();if(r.error)throw r.error;
  if(!r.data.is_active){await db().auth.signOut();throw Error("This account is inactive. Contact AUREVIA management.")}
- user=u;profile=r.data;$("publicSite").style.display="none";$("dashboard").classList.add("show");
+ user=u;profile=r.data;setupNotificationRealtime();$("publicSite").style.display="none";$("dashboard").classList.add("show");
  $("roleLabel").textContent=nice(profile.role)+" workspace";$("dashUserName").textContent=profile.full_name||u.email;$("dashUserEmail").textContent=u.email;
  $("previewNote").textContent="SECURE WORKSPACE · "+u.email;const destination=pendingPage||"Overview";pendingPage=null;await render(destination);window.scrollTo(0,0)
 }
@@ -188,7 +188,7 @@ async function messages(){
  return form+panel("Inbox and sent messages",(r.data||[]).map(x=>'<article class="live-record"><h4>'+esc(x.subject||"Message")+'</h4><p>'+esc(x.body)+'</p><small>'+(x.sender_id===user.id?"Sent":"Received")+' · '+esc(date(x.created_at))+'</small></article>').join("")||empty("No messages."));
 }
 
-let communityChannel=null;
+let communityChannel=null,notificationChannel=null,browserNotificationsEnabled=false;
 
 async function showPublicSubject(subjectId){
  const box=$("gedPublicLessons");if(!box)return;
@@ -254,6 +254,19 @@ async function fees(){
  setTimeout(()=>document.querySelectorAll(".feePayForm").forEach(f=>f.onsubmit=async e=>{e.preventDefault();const v=formData(f);const invoice=(r.data||[]).find(x=>x.id===f.dataset.invoiceId);const amount=Number(v.amount);if(!invoice||!Number.isFinite(amount)||amount<=0||amount>Number(invoice.amount))return toast("Enter a valid payment amount.");const q=await db().from("fee_payments").insert({invoice_id:invoice.id,student_id:user.id,amount,currency:invoice.currency,payment_method:v.payment_method,transaction_reference:v.transaction_reference||"",verification_status:"pending"});if(q.error)toast(q.error.message);else{toast("Payment submitted for management verification.");render("Fees & payments")}}),0);
  return panel("My fee account",cards);
 }
+async function setupNotificationRealtime(){
+ if(!db()||!user)return;
+ if(notificationChannel){db().removeChannel(notificationChannel);notificationChannel=null}
+ const p=await db().from("notification_preferences").select("browser_notifications").eq("user_id",user.id).maybeSingle();
+ browserNotificationsEnabled=!!(p.data&&p.data.browser_notifications&&"Notification" in window&&Notification.permission==="granted");
+ notificationChannel=db().channel("aurevia-notifications-"+user.id).on("postgres_changes",{event:"INSERT",schema:"public",table:"notifications",filter:"recipient_id=eq."+user.id},payload=>{
+  if(browserNotificationsEnabled&&"Notification" in window&&Notification.permission==="granted"){
+   try{new Notification(payload.new.title,{body:payload.new.body,tag:payload.new.id})}catch(e){}
+  }
+  if(page==="Notifications")render("Notifications");
+ }).subscribe();
+}
+
 async function notifications(){
  const [n,p]=await Promise.all([
   db().from("notifications").select("id,title,body,notification_type,action_url,scheduled_for,sent_at,read_at").eq("recipient_id",user.id).order("scheduled_for",{ascending:false}).limit(60),
@@ -261,8 +274,21 @@ async function notifications(){
  ]);
  if(n.error)throw n.error;if(p.error)throw p.error;
  const pref=p.data||{daily_homework:true,weekly_lesson:true,monthly_fee:true,browser_notifications:false,email_notifications:true,timezone:"Asia/Kabul",preferred_language:"en"};
- const form='<form class="live-form" id="notificationPrefs"><label class="check-field"><input type="checkbox" name="daily_homework" '+(pref.daily_homework?'checked':'')+'> Daily homework reminders</label><label class="check-field"><input type="checkbox" name="weekly_lesson" '+(pref.weekly_lesson?'checked':'')+'> Weekly lesson reminders</label><label class="check-field"><input type="checkbox" name="monthly_fee" '+(pref.monthly_fee?'checked':'')+'> Monthly fee reminders</label><label class="check-field"><input type="checkbox" name="browser_notifications" '+(pref.browser_notifications?'checked':'')+'> Browser notifications (permission required)</label><label class="check-field"><input type="checkbox" name="email_notifications" '+(pref.email_notifications?'checked':'')+'> Email notifications</label><label class="live-field">Notification language<select name="preferred_language"><option value="en" '+(pref.preferred_language==="en"?"selected":"")+'>English</option><option value="prs" '+(pref.preferred_language==="prs"?"selected":"")+'>دری</option></select></label><label class="live-field">Time zone<input name="timezone" value="'+esc(pref.timezone)+'" required></label><button class="btn btn-green">Save notification settings</button></form>';
- setTimeout(()=>bind("notificationPrefs",async f=>{const v=formData(f);const q=await db().from("notification_preferences").upsert({user_id:user.id,daily_homework:!!v.daily_homework,weekly_lesson:!!v.weekly_lesson,monthly_fee:!!v.monthly_fee,browser_notifications:!!v.browser_notifications,email_notifications:!!v.email_notifications,timezone:v.timezone,preferred_language:v.preferred_language||"en"});if(q.error)throw q.error;toast("Notification settings saved.")}),0);
+ const form='<form class="live-form" id="notificationPrefs"><label class="check-field"><input type="checkbox" name="daily_homework" '+(pref.daily_homework?'checked':'')+'> Daily homework reminders</label><label class="check-field"><input type="checkbox" name="weekly_lesson" '+(pref.weekly_lesson?'checked':'')+'> Weekly lesson reminders</label><label class="check-field"><input type="checkbox" name="monthly_fee" '+(pref.monthly_fee?'checked':'')+'> Monthly fee reminders</label><label class="check-field"><input type="checkbox" name="browser_notifications" '+(pref.browser_notifications?'checked':'')+'> Browser notifications (permission required)</label><label class="check-field"><input type="checkbox" name="email_notifications" disabled '+(pref.email_notifications?'checked':'')+'> Email notifications</label><label class="live-field">Notification language<select name="preferred_language"><option value="en" '+(pref.preferred_language==="en"?"selected":"")+'>English</option><option value="prs" '+(pref.preferred_language==="prs"?"selected":"")+'>دری</option></select></label><label class="live-field">Time zone<input name="timezone" value="'+esc(pref.timezone)+'" required></label><button class="btn btn-green">Save notification settings</button></form>';
+ setTimeout(()=>bind("notificationPrefs",async f=>{
+  const v=formData(f);
+  let browserAllowed=!!v.browser_notifications;
+  if(browserAllowed&&"Notification" in window&&Notification.permission==="default")browserAllowed=(await Notification.requestPermission())==="granted";
+  if(browserAllowed&&(!("Notification" in window)||Notification.permission!=="granted"))browserAllowed=false;
+  const q=await db().from("notification_preferences").upsert({
+    user_id:user.id,daily_homework:!!v.daily_homework,weekly_lesson:!!v.weekly_lesson,
+    monthly_fee:!!v.monthly_fee,browser_notifications:browserAllowed,email_notifications:false,
+    timezone:v.timezone,preferred_language:v.preferred_language||"en"
+  });
+  if(q.error)throw q.error;
+  toast(browserAllowed||!v.browser_notifications?"Notification settings saved.":"Browser permission was not granted; in-app reminders remain active.");
+  setupNotificationRealtime();
+}),0);
  const list=(n.data||[]).map(x=>'<article class="notification-row '+(x.read_at?'read':'unread')+'"><div><b>'+esc(x.title)+'</b><p>'+esc(x.body)+'</p><small>'+esc(nice(x.notification_type))+' · '+esc(date(x.sent_at||x.scheduled_for))+'</small></div>'+(x.read_at?"":'<button class="activity-tag" data-read-notification="'+x.id+'">Mark read</button>')+'</article>').join("")||empty("You have no notifications yet.");
  return panel("Notification preferences",form)+panel("Your notifications",list);
 }
@@ -288,7 +314,7 @@ document.addEventListener("change",async e=>{
  const q=await db().from("profiles").update({role:r.value}).eq("id",r.dataset.roleId);
  if(q.error){toast(q.error.message);render(page)}else{toast("Role updated.");render(page)}
 });
-async function signOut(){if(communityChannel&&db()){db().removeChannel(communityChannel);communityChannel=null}if(db())await db().auth.signOut();$("authPassword").value="";user=null;profile=null;$("dashboard").classList.remove("show");$("publicSite").style.display="block";window.scrollTo(0,0)}
+async function signOut(){if(communityChannel&&db()){db().removeChannel(communityChannel);communityChannel=null}if(notificationChannel&&db()){db().removeChannel(notificationChannel);notificationChannel=null}if(db())await db().auth.signOut();$("authPassword").value="";user=null;profile=null;$("dashboard").classList.remove("show");$("publicSite").style.display="block";window.scrollTo(0,0)}
 window.ruyaNavigate=render;window.ruyaSignIn=signin;window.ruyaSignUp=signupAction;window.ruyaAuthSubmit=()=>authenticate(authSignup);window.ruyaShowLogin=openLogin;window.ruyaOpenLibrary=()=>{const el=$("ged-public-learning");if(el)el.scrollIntoView({behavior:"smooth"});};window.ruyaCloseLogin=close;window.ruyaSignOut=signOut;window.ruyaResetPassword=resetPassword;window.ruyaAuthSwitch=()=>mode($("authSwitch").dataset.mode||"signup");
 document.addEventListener("DOMContentLoaded",async()=>{
  loadPublicGedCatalog();
