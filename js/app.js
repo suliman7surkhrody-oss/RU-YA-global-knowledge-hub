@@ -66,7 +66,10 @@ async function render(p){
   else if(["Learning library","GED library","Learning resources","GED learning resources","Resources"].includes(p))b=await library();
   else if(p==="People & roles")b=await people();
   else if(p==="Announcements")b=await announcements();
-  else if(p==="Messages")b=await messages();\n  else if(p==="Community chat")b=await communityChat();\n  else if(p==="Fees & payments")b=await fees();\n  else if(p==="Notifications")b=await notifications();
+  else if(p==="Messages")b=await messages();
+  else if(p==="Community chat")b=await communityChat();
+  else if(p==="Fees & payments")b=await fees();
+  else if(p==="Notifications")b=await notifications();
   else b=await records();
   $("dashContent").innerHTML=shell(p,"Live data from the AUREVIA academic workspace.",b);
  }catch(e){$("dashContent").innerHTML=shell(p,"Unable to load this section.",panel("Connection issue",'<p class="error-copy">'+esc(e.message)+'</p><button class="btn btn-outline" onclick="ruyaNavigate(\''+p+'\')">Retry</button>'))}
@@ -212,7 +215,8 @@ async function loadPublicGedCatalog(){
   else library.innerHTML=(l.data||[]).filter(x=>x.external_url).map(x=>'<a class="public-resource" href="'+esc(x.external_url)+'" target="_blank" rel="noopener"><b>'+esc(x.title)+'</b><small>'+esc(x.category)+' · '+esc(x.description)+'</small><span>Open ↗</span></a>').join("")||'<p class="empty-state">Open learning resources will appear here as they are published.</p>';
  }
 }
-\nasync function communityChat(){
+
+async function communityChat(){
  const r=await db().from("community_messages").select("id,body,created_at,sender_id,profiles!community_messages_sender_id_fkey(full_name,role)").eq("room_key","general").is("deleted_at",null).order("created_at",{ascending:false}).limit(80);
  if(r.error)throw r.error;
  const messages=(r.data||[]).reverse().map(m=>'<article class="chat-message '+(m.sender_id===user.id?'mine':'')+'"><div class="chat-meta"><b>'+esc(m.profiles?.full_name||"AUREVIA learner")+'</b><span>'+esc(nice(m.profiles?.role||"student"))+' · '+esc(date(m.created_at))+'</span></div><p>'+esc(m.body)+'</p></article>').join("")||empty("No messages yet. Start the conversation.");
@@ -262,7 +266,8 @@ async function notifications(){
  const list=(n.data||[]).map(x=>'<article class="notification-row '+(x.read_at?'read':'unread')+'"><div><b>'+esc(x.title)+'</b><p>'+esc(x.body)+'</p><small>'+esc(nice(x.notification_type))+' · '+esc(date(x.sent_at||x.scheduled_for))+'</small></div>'+(x.read_at?"":'<button class="activity-tag" data-read-notification="'+x.id+'">Mark read</button>')+'</article>').join("")||empty("You have no notifications yet.");
  return panel("Notification preferences",form)+panel("Your notifications",list);
 }
-\nasync function records(){
+
+async function records(){
  const [a,b,c]=await Promise.all([db().from("attendance").select("id"),db().from("submissions").select("id"),db().from("enrollments").select("id")]);for(const x of [a,b,c])if(x.error)throw x.error;
  let termForm="",termRows="";
  if(profile.role==="management"){
