@@ -139,18 +139,28 @@ async function courseContent(){
  const q=await db().from("courses").select("id,code,title,title_dari,description,description_dari,ged_subject_id,access_type,price_amount,currency").eq("id",selectedCourseId).single();
  if(q.error)throw q.error;
  const c=q.data;
- let lessons=[];
+ let lessons=[],locked=false;
+ if(profile.role==="student"){
+  const er=await db().from("enrollments").select("id,status").eq("student_id",user.id).eq("course_id",c.id).maybeSingle();
+  if(er.error)throw er.error;
+  locked=!er.data||er.data.status!=="active";
+ }
  if(c.ged_subject_id){
   const r=await db().from("ged_lessons").select("id,title_en,title_dari,summary_en,summary_dari,content_en,content_dari,estimated_minutes,sort_order").eq("subject_id",c.ged_subject_id).eq("is_published",true).order("sort_order");
   if(r.error)throw r.error;lessons=r.data||[];
  }else if(c.code==="GED-COMPLETE"){
   const r=await db().from("ged_lessons").select("id,title_en,title_dari,summary_en,summary_dari,content_en,content_dari,estimated_minutes,sort_order,ged_subjects(title_en,title_dari,code)").eq("is_published",true).order("sort_order");
   if(r.error)throw r.error;lessons=r.data||[];
+ }else if(!locked){
+  const r=await db().from("course_lessons").select("id,title_en,title_dari,summary_en,summary_dari,content_en,content_dari,estimated_minutes,sort_order").eq("course_id",c.id).eq("is_published",true).order("sort_order");
+  if(r.error)throw r.error;lessons=r.data||[];
  }
- const lessonCards=lessons.map(x=>'<article class="course-lesson"><div class="course-lesson-meta">'+esc(x.ged_subjects?.code||"GED LESSON")+' · '+esc(x.estimated_minutes)+' MIN</div><h3><span class="en">'+esc(x.title_en)+'</span><span class="prs">'+esc(x.title_dari)+'</span></h3><p><span class="en">'+esc(x.summary_en)+'</span><span class="prs">'+esc(x.summary_dari)+'</span></p><details><summary>Open lesson</summary><div class="course-lesson-content"><div class="en">'+esc(x.content_en).replace(/\n/g,"<br>")+'</div><div class="prs">'+esc(x.content_dari).replace(/\n/g,"<br>")+'</div></div></details></article>').join("");
+ const lessonCards=lessons.map(x=>'<article class="course-lesson"><div class="course-lesson-meta">'+esc(x.ged_subjects?.code||"COURSE LESSON")+' · '+esc(x.estimated_minutes)+' MIN</div><h3><span class="en">'+esc(x.title_en)+'</span><span class="prs">'+esc(x.title_dari)+'</span></h3><p><span class="en">'+esc(x.summary_en)+'</span><span class="prs">'+esc(x.summary_dari)+'</span></p><details><summary>Open lesson</summary><div class="course-lesson-content"><div class="en">'+esc(x.content_en).replace(/\n/g,"<br>")+'</div><div class="prs">'+esc(x.content_dari).replace(/\n/g,"<br>")+'</div></div></details></article>').join("");
  const title='<h2 class="workspace-page-title"><span class="en">'+esc(c.title)+'</span><span class="prs">'+esc(c.title_dari||c.title)+'</span></h2><p class="workspace-page-intro"><span class="en">'+esc(c.description)+'</span><span class="prs">'+esc(c.description_dari||c.description)+'</span></p>';
  const back='<button class="btn btn-outline" type="button" onclick="ruyaNavigate(\'Course catalogue\')">← Back to course catalogue</button>';
- const body=lessonCards||'<p class="record-note">The course outline is published. Detailed lessons and activities for this programme are being prepared; use the library for supporting study materials in the meantime.</p>';
+ const body=locked&& !c.ged_subject_id&&c.code!=="GED-COMPLETE"
+  ?'<p class="record-note">Register for this course and complete the payment verification process to unlock its lessons and live sessions.</p>'
+  :lessonCards||'<p class="record-note">The course outline is published. Detailed lessons and activities for this programme are being prepared; use the library for supporting study materials in the meantime.</p>';
  return back+panel("Course overview",title+body);
 }
 async function classes(){
