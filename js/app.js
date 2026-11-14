@@ -115,7 +115,7 @@ async function courses(){
   const registrations=new Map((owned.data||[]).map(x=>[x.course_id,x]));
   const invoicesByEnrollment=new Map((invoices.data||[]).filter(x=>x.enrollment_id).map(x=>[x.enrollment_id,x]));
   const cards=(catalog.data||[]).map(c=>{
-   const e=registrations.get(c.id),afghanistan=String(profile.country||"").trim().toLowerCase()==="afghanistan",localAmount=afghanistan?c.price_afn:c.price_usd,localCurrency=afghanistan?"AFN":"USD",fee=c.access_type==="free"?"FREE":localAmount!=null?esc(localCurrency)+" "+esc(localAmount):"FEE TO BE ANNOUNCED";
+   const e=registrations.get(c.id),afghanistan=String(profile.country||"").trim().toLowerCase()==="afghanistan",localAmount=afghanistan?c.price_afn:c.price_usd,localCurrency=afghanistan?"AFN":"USD",fee=c.access_type==="free"?"FREE":!profile.country?"SET COUNTRY":localAmount!=null?esc(localCurrency)+" "+esc(localAmount):"FEE TO BE ANNOUNCED";
    const invoice=e?invoicesByEnrollment.get(e.id):null;
    const state=e?e.status==="active"?"ENROLLED":e.status==="pending"?(invoice?"INVOICE ISSUED":"WAITING FOR INVOICE"):nice(e.status).toUpperCase():"";
    const action=e?(e.status==="pending"?'<button class="activity-tag" type="button" data-open-fees>VIEW PAYMENT STATUS</button>':'<span class="activity-tag">'+esc(state)+'</span>'):'<button class="btn btn-green" type="button" data-enroll-course="'+c.id+'">'+(c.access_type==="free"?"Enrol free course":"Register for course")+'</button>';
