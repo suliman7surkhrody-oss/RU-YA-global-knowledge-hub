@@ -128,17 +128,17 @@ async function courses(){
  }
  const r=profile.role==="management"?await db().from("courses").select("*").eq("is_published",true).not("ged_subject_id","is",null).order("created_at",{ascending:false}):await db().from("class_sections").select("title,courses!inner(id,title,code,ged_subject_id,is_published)").eq("teacher_id",user.id).not("courses.ged_subject_id","is",null).eq("courses.is_published",true);
  if(r.error)throw r.error;
- let form=profile.role==="management"?'<form class="live-form" id="courseFeeForm"><h3>Set GED course fees and payment details</h3><label class="live-field">GED subject<select name="course_id">'+(r.data||[]).map(x=>'<option value="'+x.id+'">'+esc(x.title)+' · '+(x.price_afn!=null?esc(x.price_afn)+" AFN / "+esc(x.price_usd)+" USD":"Fee not set")+'</option>').join("")+'</select></label>'+field("Course fee amount","price_amount","number")+'<label class="live-field">Currency<select name="currency"><option value="AFN">AFN</option><option value="USD">USD</option></select></label><label class="live-field">Payment instructions<textarea name="payment_instructions" rows="3" placeholder="Payment methods and instructions will be provided here." required>USDT (TRC20): THmcuNkiZfm7ijZ9pbD9vSJopfmrwbGp84\nVisa card: Availability depends on your country and supported payment provider. Message AUREVIA Management if unavailable.\nIn-person payment: Message AUREVIA Management to arrange payment.\nFor USDT, send only on the TRON (TRC20) network. Include your transaction hash when submitting payment. Use this method only where legally permitted.</textarea></label><label class="live-field">Payment due in days<input name="payment_due_days" type="number" min="1" max="30" value="7" required></label><button class="btn btn-green">Save fee and payment details</button></form>':"";
+ let form=profile.role==="management"?'<form class="live-form" id="courseFeeForm"><h3>Set GED course fees and payment details</h3><label class="live-field">GED subject<select name="course_id">'+(r.data||[]).map(x=>'<option value="'+x.id+'">'+esc(x.title)+' · '+(x.price_afn!=null?esc(x.price_afn)+" AFN / "+esc(x.price_usd)+" USD":"Fee not set")+'</option>').join("")+'</select></label>'+field("Afghanistan fee (AFN, maximum 300)","price_afn","number")+field("International fee (USD)","price_usd","number")+'<label class="live-field">Currency<select name="currency"><option value="AFN">AFN</option><option value="USD">USD</option></select></label><label class="live-field">Payment instructions<textarea name="payment_instructions" rows="3" placeholder="Payment methods and instructions will be provided here." required>USDT (TRC20): THmcuNkiZfm7ijZ9pbD9vSJopfmrwbGp84\nVisa card: Availability depends on your country and supported payment provider. Message AUREVIA Management if unavailable.\nIn-person payment: Message AUREVIA Management to arrange payment.\nFor USDT, send only on the TRON (TRC20) network. Include your transaction hash when submitting payment. Use this method only where legally permitted.</textarea></label><label class="live-field">Payment due in days<input name="payment_due_days" type="number" min="1" max="30" value="7" required></label><button class="btn btn-green">Save fee and payment details</button></form>':"";
  if(profile.role==="management")setTimeout(()=>bind("courseFeeForm",async f=>{
-  const v=formData(f),amount=Number(v.price_amount),days=Number(v.payment_due_days);
-  if(!Number.isFinite(amount)||amount<=0)throw Error("Enter a course fee greater than zero.");
+  const v=formData(f),afn=Number(v.price_afn),usd=Number(v.price_usd),days=Number(v.payment_due_days);
+  if(!Number.isFinite(afn)||afn<=0||afn>300)throw Error("The Afghanistan fee must be between 1 and 300 AFN.");if(!Number.isFinite(usd)||usd<=0)throw Error("Enter a valid international fee in USD.");
   if(!Number.isInteger(days)||days<1||days>30)throw Error("Payment due days must be between 1 and 30.");
   if(!v.payment_instructions.trim())throw Error("Enter clear payment instructions for learners.");
   const course=(r.data||[]).find(x=>x.id===v.course_id);if(!course)throw Error("Select a GED subject.");
-  const q=await db().from("courses").update({price_amount:amount,currency:v.currency,payment_instructions:v.payment_instructions.trim(),payment_due_days:days}).eq("id",v.course_id);
+  const q=await db().from("courses").update({price_afn:afn,price_usd:usd,payment_instructions:v.payment_instructions.trim(),payment_due_days:days}).eq("id",v.course_id);
   if(q.error)throw q.error;
   const [pending,existing]=await Promise.all([
-   db().from("enrollments").select("id,student_id").eq("course_id",v.course_id).eq("status","pending"),
+   db().from("enrollments").select("id,student_id,profiles(country)").eq("course_id",v.course_id).eq("status","pending"),
    db().from("fee_invoices").select("enrollment_id").eq("course_id",v.course_id)
   ]);
   if(pending.error)throw pending.error;if(existing.error)throw existing.error;
@@ -147,7 +147,7 @@ async function courses(){
   let created=0;
   for(const enrolment of pending.data||[]){
    if(issued.has(enrolment.id))continue;
-   const invoice=await db().from("fee_invoices").insert({student_id:enrolment.student_id,title:"GED course fee — "+course.title,description:"Course registration fee for "+course.title,billing_period:new Intl.DateTimeFormat("en",{month:"long",year:"numeric"}).format(new Date()),amount,currency:v.currency,due_date:dueDate,status:"pending",course_id:v.course_id,enrollment_id:enrolment.id,payment_instructions:v.payment_instructions.trim(),created_by:user.id});
+   const invoice=await db().from("fee_invoices").insert({student_id:enrolment.student_id,title:"GED course fee — "+course.title,description:"Course registration fee for "+course.title,billing_period:new Intl.DateTimeFormat("en",{month:"long",year:"numeric"}).format(new Date()),amount:(String(enrolment.profiles?.country||"").trim().toLowerCase()==="afghanistan"?afn:usd),currency:(String(enrolment.profiles?.country||"").trim().toLowerCase()==="afghanistan"?"AFN":"USD"),due_date:dueDate,status:"pending",course_id:v.course_id,enrollment_id:enrolment.id,payment_instructions:v.payment_instructions.trim(),created_by:user.id});
    if(invoice.error)throw invoice.error;created++;
   }
   toast("Course fee saved. "+created+" pending invoice(s) issued.");render(page);
