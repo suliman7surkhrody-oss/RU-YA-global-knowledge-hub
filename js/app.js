@@ -120,7 +120,7 @@ async function courses(){
   const my=(owned.data||[]).map(e=>{const c=(catalog.data||[]).find(x=>x.id===e.course_id);return c?row(c.title,c.code,nice(e.status)):""}).join("")||empty("You have not registered for a course yet.");
   return '<div class="catalog-intro"><h2 class="workspace-page-title">Explore AUREVIA courses</h2><p class="workspace-page-intro">Browse the available programmes and register. Paid courses unlock live classes after management verifies your payment.</p></div><div class="catalog-grid">'+cards+'</div>'+panel("My registrations",my);
  }
- const r=profile.role==="management"?await db().from("courses").select("*").order("created_at",{ascending:false}):await db().from("class_sections").select("title,courses(title,code)").eq("teacher_id",user.id);
+ const r=profile.role==="management"?await db().from("courses").select("*").order("created_at",{ascending:false}):await db().from("class_sections").select("title,courses(id,title,code)").eq("teacher_id",user.id);
  if(r.error)throw r.error;
  let form=profile.role==="management"?'<form class="live-form" id="courseForm"><h3>Create a course</h3>'+field("Course code","code")+field("Course title","title")+field("Course title (Dari)","title_dari")+field("Level","level")+field("Category","category")+'<label class="live-field">Description<textarea name="description" required></textarea></label><label class="live-field">Description (Dari)<textarea name="description_dari"></textarea></label><label class="live-field">Access type<select name="access_type"><option value="paid" selected>Paid — payment required for live classes</option><option value="free">Free</option></select></label><div class="form-pair">'+'<label class="live-field">Fee amount (optional)<input name="price_amount" type="number" min="0" step="0.01"></label>'+'<label class="live-field">Currency<select name="currency"><option value="USD">USD</option><option value="AFN">AFN</option></select></label></div><label class="check-field"><input type="checkbox" name="is_published" checked> Publish course and open registration</label><button class="btn btn-green">Create course</button></form>':"";
  setTimeout(()=>bind("courseForm",async f=>{
@@ -130,7 +130,7 @@ async function courses(){
   if(section.error){toast("Course created, but its enrolment section could not be opened: "+section.error.message);return}
   toast("Course created with an open registration section.");render(page);
  }),0);
- const rows=profile.role==="management"?(r.data||[]).map(x=>row(x.title,x.code+" · "+(x.category||""),(x.access_type||"paid").toUpperCase())):(r.data||[]).map(x=>row(x.title||x.courses?.title,x.courses?.code||"","ACTIVE"));
+ const rows=profile.role==="management"?(r.data||[]).map(x=>'<div class="activity-row"><div class="activity-copy"><b>'+esc(x.title)+'</b><small>'+esc(x.code)+' · '+esc(x.category||"")+' · '+esc((x.access_type||"paid").toUpperCase())+'</small></div><button class="activity-tag" type="button" data-course-content="'+x.id+'">MANAGE CONTENT</button></div>').join(""):(r.data||[]).map(x=>'<div class="activity-row"><div class="activity-copy"><b>'+esc(x.courses?.title||x.title)+'</b><small>'+esc(x.courses?.code||"")+'</small></div>'+(x.courses?.id?'<button class="activity-tag" type="button" data-course-content="'+x.courses.id+'">VIEW CONTENT</button>':"")+'</div>').join("");
  return form+panel("Course catalogue",rows.join("")||empty("No courses have been added."));
 }
 
@@ -139,7 +139,7 @@ async function courseContent(){
  const q=await db().from("courses").select("id,code,title,title_dari,description,description_dari,ged_subject_id,access_type,price_amount,currency").eq("id",selectedCourseId).single();
  if(q.error)throw q.error;
  const c=q.data;
- let lessons=[],locked=false;
+ let lessons=[],locked=false,courseLessonForm="";
  if(profile.role==="student"){
   const er=await db().from("enrollments").select("id,status").eq("student_id",user.id).eq("course_id",c.id).maybeSingle();
   if(er.error)throw er.error;
@@ -151,9 +151,14 @@ async function courseContent(){
  }else if(c.code==="GED-COMPLETE"){
   const r=await db().from("ged_lessons").select("id,title_en,title_dari,summary_en,summary_dari,content_en,content_dari,estimated_minutes,sort_order,ged_subjects(title_en,title_dari,code)").eq("is_published",true).order("sort_order");
   if(r.error)throw r.error;lessons=r.data||[];
- }else if(!locked){
+ }
+ if(!locked){
   const r=await db().from("course_lessons").select("id,title_en,title_dari,summary_en,summary_dari,content_en,content_dari,estimated_minutes,sort_order").eq("course_id",c.id).eq("is_published",true).order("sort_order");
-  if(r.error)throw r.error;lessons=r.data||[];
+  if(r.error)throw r.error;lessons=lessons.concat(r.data||[]);
+ }
+ if(profile.role!=="student"){
+  courseLessonForm='<form class="live-form" id="courseLessonForm"><h3>Add a course lesson</h3>'+field("Lesson title (English)","title_en")+field("Lesson title (Dari)","title_dari")+'<label class="live-field">Summary (English)<textarea name="summary_en" required></textarea></label><label class="live-field">Summary (Dari)<textarea name="summary_dari" required></textarea></label><label class="live-field">Lesson content (English)<textarea name="content_en" rows="5" required></textarea></label><label class="live-field">Lesson content (Dari)<textarea name="content_dari" rows="5" required></textarea></label><div class="form-pair">'+field("Lesson order","sort_order","number")+field("Estimated minutes","estimated_minutes","number")+'</div><label class="check-field"><input type="checkbox" name="is_published" checked> Publish lesson</label><button class="btn btn-green">Save lesson</button></form>';
+  setTimeout(()=>bind("courseLessonForm",async f=>{const v=formData(f);const q=await db().from("course_lessons").insert({course_id:c.id,title_en:v.title_en,title_dari:v.title_dari,summary_en:v.summary_en,summary_dari:v.summary_dari,content_en:v.content_en,content_dari:v.content_dari,sort_order:Number(v.sort_order),estimated_minutes:Number(v.estimated_minutes||20),is_published:!!v.is_published,created_by:user.id});if(q.error)throw q.error;toast("Course lesson saved.");render("Course details")}),0);
  }
  const lessonCards=lessons.map(x=>'<article class="course-lesson"><div class="course-lesson-meta">'+esc(x.ged_subjects?.code||"COURSE LESSON")+' · '+esc(x.estimated_minutes)+' MIN</div><h3><span class="en">'+esc(x.title_en)+'</span><span class="prs">'+esc(x.title_dari)+'</span></h3><p><span class="en">'+esc(x.summary_en)+'</span><span class="prs">'+esc(x.summary_dari)+'</span></p><details><summary>Open lesson</summary><div class="course-lesson-content"><div class="en">'+esc(x.content_en).replace(/\n/g,"<br>")+'</div><div class="prs">'+esc(x.content_dari).replace(/\n/g,"<br>")+'</div></div></details></article>').join("");
  const title='<h2 class="workspace-page-title"><span class="en">'+esc(c.title)+'</span><span class="prs">'+esc(c.title_dari||c.title)+'</span></h2><p class="workspace-page-intro"><span class="en">'+esc(c.description)+'</span><span class="prs">'+esc(c.description_dari||c.description)+'</span></p>';
@@ -161,7 +166,7 @@ async function courseContent(){
  const body=locked&& !c.ged_subject_id&&c.code!=="GED-COMPLETE"
   ?'<p class="record-note">Register for this course and complete the payment verification process to unlock its lessons and live sessions.</p>'
   :lessonCards||'<p class="record-note">The course outline is published. Detailed lessons and activities for this programme are being prepared; use the library for supporting study materials in the meantime.</p>';
- return back+panel("Course overview",title+body);
+ return back+courseLessonForm+panel("Course overview",title+body);
 }
 async function classes(){
  let sections=[];
