@@ -135,7 +135,7 @@ async function courseContent(){
  const c=q.data;
  let subject=null,lessons=[],locked=false,courseLessonForm="";
  if(c.ged_subject_id){
-  const sr=await db().from("ged_subjects").select("code,title_en,title_dari,summary_en,summary_dari,topics,exam_duration_minutes").eq("id",c.ged_subject_id).single();
+  const sr=await db().from("ged_subjects").select("id,code,title_en,title_dari,summary_en,summary_dari,topics,exam_duration_minutes").eq("id",c.ged_subject_id).single();
   if(sr.error)throw sr.error;subject=sr.data;
  }
  if(profile.role==="student"){
