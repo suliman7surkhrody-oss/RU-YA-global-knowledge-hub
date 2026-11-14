@@ -1,4 +1,4 @@
-name: Deploy RU'YA preview to GitHub Pages
+name: Deploy AUREVIA GED Academy to GitHub Pages
 
 on:
   push:
