@@ -4,7 +4,7 @@ const $=id=>document.getElementById(id), db=()=>window.ruyaSupabase;
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const nice=s=>String(s||"").replace(/[_-]/g," ").replace(/\b\w/g,c=>c.toUpperCase());
 let user=null,profile=null,page="Overview",selectedCourseId=null;
-const menus={student:["Overview","Course catalogue","Live classes","Assignments","Attendance","GED library","Community chat","Fees & payments","Notifications","Announcements","Messages"],teacher:["Overview","My GED classes","Teaching schedule","Assignments & grading","Attendance register","GED learning resources","Fees & payments","Community chat","Notifications","Announcements","Messages"],management:["Overview","GED programs","People & roles","Timetables","Academic records","GED library","Community chat","Fees & payments","Notifications","Announcements","Messages"]};
+const menus={student:["Overview","GED programme & schedule","Course catalogue","Live classes","Assignments","Attendance","GED library","Community chat","Fees & payments","Notifications","Announcements","Messages"],teacher:["Overview","GED programme & schedule","My GED classes","Teaching schedule","Assignments & grading","Attendance register","GED learning resources","Fees & payments","Community chat","Notifications","Announcements","Messages"],management:["Overview","GED programme & schedule","GED programs","People & roles","Timetables","Academic records","GED library","Community chat","Fees & payments","Notifications","Announcements","Messages"]};
 function toast(s){const e=$("toast");e.textContent=s;e.classList.add("show");setTimeout(()=>e.classList.remove("show"),3200)}
 let authSignup=false,authReturnFocus=null,recoveryMode=false,pendingPage=null;
 function close(){ $("loginModal").classList.remove("show");$("authPassword").value="";$("authError").textContent="";if(authReturnFocus&&typeof authReturnFocus.focus==="function")authReturnFocus.focus(); }
@@ -61,6 +61,7 @@ async function render(p){
  try{
   let b="";
   if(p==="Overview")b=await overview();
+   else if(p==="GED programme & schedule")b=programmeSchedule();
   else if(["My courses","Course catalogue","GED study plan","Academic programs","GED programs"].includes(p))b=await courses();
    else if(p==="Course details")b=await courseContent();
   else if(["Class schedule","Live classes","Teaching schedule","Timetables","My classes","My GED classes"].includes(p))b=await classes();
